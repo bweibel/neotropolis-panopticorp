@@ -1,16 +1,44 @@
 /* Panopticorp Global Styles */
 
+/* Font Faces */
+@font-face {
+  font-family: 'Dune Rise';
+  src: url('/fonts/dune_rise/Dune_Rise.otf') format('opentype'),
+       url('/fonts/dune_rise/Dune_Rise.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Ethnocentric';
+  src: url('/fonts/ethnocentric/Ethnocentric-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Orbitron';
+  src: url('/fonts/Orbitron/Orbitron-VariableFont_wght.ttf') format('truetype');
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* Colors - placeholder, update after brand decisions */
   --color-base: #0B0F14;
   --color-text: #ECE6DA;
   --color-primary: #FFB000;
   --color-dark: #140E00;
-  --color-accent: #00ff88;
 
   /* Typography */
   --font-sans: system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-display: 'Dune Rise', sans-serif;
+  --font-heading: 'Ethnocentric', sans-serif;
+  --font-tech: 'Orbitron', sans-serif;
 }
 
 *,
@@ -31,6 +59,7 @@ body {
   background: var(--color-dark);
   color: var(--color-text);
   line-height: 1.6;
+  font-family: "Orbitron";
 }
 
 a {

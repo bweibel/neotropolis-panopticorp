@@ -7,7 +7,7 @@
 
   let {
     title = 'PANOPTICORP',
-    tagline = 'Building a Safer Tomorrow Through Total Awareness',
+    tagline = 'Building a Safer Tomorrow Through Total Awareness of the Present',
     backgroundImage = '/images/placeholderbanner.png'
   }: Props = $props();
 </script>
@@ -65,6 +65,7 @@
   }
 
   .hero-title {
+    font-family: "Dune Rise";
     font-size: clamp(2rem, 8vw, 4rem);
     font-weight: 700;
     letter-spacing: 0.3em;
