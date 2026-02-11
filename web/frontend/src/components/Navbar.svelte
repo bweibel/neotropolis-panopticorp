@@ -19,8 +19,7 @@
 
 <nav class="navbar">
   <div class="nav-logo">
-    <!-- Logo placeholder -->
-    <span class="logo-placeholder">[LOGO]</span>
+    <img src="/images/logo-light.svg" alt="Panopticorp" class="logo" />
   </div>
   <ul class="nav-links">
     <!-- Navigation placeholders -->
@@ -58,9 +57,9 @@
     color: var(--color-primary);
   }
 
-  .logo-placeholder {
-    font-family: var(--font-mono);
-    letter-spacing: 0.1em;
+  .logo {
+    height: 2rem;
+    width: auto;
   }
 
   .nav-links {

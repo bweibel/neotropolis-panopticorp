@@ -2,12 +2,11 @@
 
 :root {
   /* Colors - placeholder, update after brand decisions */
-  --color-bg: #0a0a0f;
-  --color-text: #e0e0e0;
-  --color-primary: #00ff88;
+  --color-base: #0B0F14;
+  --color-text: #ECE6DA;
+  --color-primary: #FFB000;
+  --color-dark: #140E00;
   --color-accent: #00ff88;
-  --color-border: #2a2a3a;
-  --color-surface: #12121a;
 
   /* Typography */
   --font-sans: system-ui, -apple-system, sans-serif;
@@ -29,7 +28,7 @@ html {
 body {
   margin: 0;
   padding: 0;
-  background: var(--color-bg);
+  background: var(--color-dark);
   color: var(--color-text);
   line-height: 1.6;
 }

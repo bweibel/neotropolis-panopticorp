@@ -5,7 +5,7 @@
 
 <style>
   .notice {
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-dark);
     padding: 1.5rem 2rem;
     font-size: 0.875rem;
   }
