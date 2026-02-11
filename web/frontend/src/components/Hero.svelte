@@ -25,6 +25,10 @@
   .hero {
     position: relative;
     min-height: 50vh;
+    max-width: 80rem;
+    width: 100%;
+    margin:  10rem auto;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -32,12 +36,11 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    border: 4px dashed var(--color-primary-dark);
   }
 
-  .hero-overlay {
-    position: absolute;
-    inset: 0;
-    background-position: cover;
+  h1 img {
+    max-width: 100%;
   }
 
   .hero-content {
