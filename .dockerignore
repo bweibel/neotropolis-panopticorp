@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+**/dist/
+
+# Development files
+.git/
+.gitignore
+.env
+.env.local
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test files
+**/*.test.ts
+**/*.spec.ts
+coverage/
+
+# Deploy directory (not needed in image builds)
+deploy/
+
+# GitHub workflows
+.github/

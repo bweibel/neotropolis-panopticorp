@@ -1,0 +1,44 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - panopticorp
+
+  frontend:
+    image: ghcr.io/bweibel/panopticorp-frontend:latest
+    restart: unless-stopped
+    networks:
+      - panopticorp
+
+  backend:
+    image: ghcr.io/bweibel/panopticorp-backend:latest
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_PATH=/app/data/panopticorp.db
+      - SESSION_SECRET=${SESSION_SECRET}
+    volumes:
+      - sqlite_data:/app/data
+    networks:
+      - panopticorp
+
+volumes:
+  caddy_data:
+  caddy_config:
+  sqlite_data:
+
+networks:
+  panopticorp:
+    driver: bridge
