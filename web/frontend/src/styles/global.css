@@ -1,0 +1,44 @@
+/* Panopticorp Global Styles */
+
+:root {
+  /* Colors - placeholder, update after brand decisions */
+  --color-bg: #0a0a0f;
+  --color-text: #e0e0e0;
+  --color-primary: #00ff88;
+  --color-accent: #00ff88;
+  --color-border: #2a2a3a;
+  --color-surface: #12121a;
+
+  /* Typography */
+  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}

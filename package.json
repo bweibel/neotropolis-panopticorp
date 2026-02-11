@@ -1,0 +1,19 @@
+{
+  "name": "panopticorp",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @panopticorp/frontend --filter @panopticorp/backend dev",
+    "dev:frontend": "pnpm --filter @panopticorp/frontend dev",
+    "dev:backend": "pnpm --filter @panopticorp/backend dev",
+    "build": "pnpm --filter @panopticorp/shared build && pnpm --filter @panopticorp/frontend build && pnpm --filter @panopticorp/backend build",
+    "preview": "pnpm --filter @panopticorp/frontend preview",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

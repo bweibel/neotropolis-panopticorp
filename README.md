@@ -8,9 +8,10 @@ Evil surveillance corporation for cyberpunk event (May 2026).
 - Physical vehicle installation (Subaru Baja → RSU)
 
 ## Tech Stack
-- Frontend: [TBD - Vite + vanilla JS or Svelte]
-- Backend: Node/Express + SQLite
-- Hosting: [Your existing infrastructure]
+- Frontend: Svelte 5 + Vite + TypeScript
+- Backend: Express + TypeScript + SQLite
+- Package Manager: pnpm (workspaces)
+- Hosting: Self-hosted / VPS
 
 ## Timeline
 3-month sprint: Feb-May 2026
@@ -29,4 +30,36 @@ neotropolis-panopticorp/
 ```
 
 ## Getting Started
-[To be filled in after tech stack decisions]
+
+### Prerequisites
+- Node.js >= 20.0.0
+- pnpm >= 9.0.0
+
+### Installation
+```bash
+# Install dependencies
+pnpm install
+
+# Copy environment file
+cp .env.example .env
+```
+
+### Development
+```bash
+# Run both frontend and backend
+pnpm dev
+
+# Or run separately
+pnpm dev:frontend  # http://localhost:3000
+pnpm dev:backend   # http://localhost:3001
+```
+
+### Build
+```bash
+pnpm build
+```
+
+### Project URLs
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:3001
+- Health check: http://localhost:3001/api/health
