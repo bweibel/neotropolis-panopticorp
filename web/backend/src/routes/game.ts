@@ -1,7 +1,7 @@
-import { Router } from 'express';
+import { Router, type Router as RouterType } from 'express';
 import type { ApiResponse, GameState } from '@panopticorp/shared';
 
-export const gameRouter = Router();
+export const gameRouter: RouterType = Router();
 
 // Placeholder: Get current game state
 gameRouter.get('/state', (_req, res) => {
