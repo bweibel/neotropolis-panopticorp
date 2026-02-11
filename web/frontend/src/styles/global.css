@@ -28,7 +28,7 @@
 
 :root {
   /* Colors - placeholder, update after brand decisions */
-  --color-base: #141606;
+  --color-base: #140E00;
   --color-text: #ECE6DA;
   --color-primary: #EA691C;
   --color-primary-dark: #502310;
@@ -136,5 +136,55 @@ a:hover {
       0 0 22px rgba(58, 148, 125, 0.2),
       -1px 0 6px rgba(30, 180, 150, 0.17),
       1px 0 6px rgba(80, 120, 100, 0.15);
+  }
+}
+
+/* CRT Glow Effects for SVG/Logo (using filter: drop-shadow) */
+
+/* Primary color logo glow (#EA691C - orange/red) */
+@keyframes crt-glow-logo-primary {
+  0%, 100% {
+    filter:
+      drop-shadow(0 0 8px rgba(234, 105, 28, 0.5))
+      drop-shadow(0 0 16px rgba(234, 105, 28, 0.3))
+      drop-shadow(-1px 0 4px rgba(255, 60, 0, 0.25));
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 8px rgba(234, 105, 28, 0.45))
+      drop-shadow(0 0 16px rgba(234, 105, 28, 0.23))
+      drop-shadow(1px 0 4px rgba(255, 150, 50, 0.2));
+  }
+}
+
+/* Text color logo glow (#ECE6DA - cream) */
+@keyframes crt-glow-logo-text {
+  0%, 100% {
+    filter:
+      drop-shadow(0 0 8px rgba(236, 230, 218, 0.5))
+      drop-shadow(0 0 16px rgba(236, 230, 218, 0.3))
+      drop-shadow(-1px 0 4px rgba(255, 245, 230, 0.25));
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 8px rgba(236, 230, 218, 0.49))
+      drop-shadow(0 0 16px rgba(236, 230, 218, 0.29))
+      drop-shadow(1px 0 4px rgba(220, 210, 195, 0.22));
+  }
+}
+
+/* Contrast color logo glow (#3A947D - teal) */
+@keyframes crt-glow-logo-contrast {
+  0%, 100% {
+    filter:
+      drop-shadow(0 0 8px rgba(58, 148, 125, 0.5))
+      drop-shadow(0 0 16px rgba(58, 148, 125, 0.3))
+      drop-shadow(-1px 0 4px rgba(30, 180, 150, 0.25));
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 8px rgba(58, 148, 125, 0.4))
+      drop-shadow(0 0 16px rgba(58, 148, 125, 0.2))
+      drop-shadow(1px 0 4px rgba(80, 120, 100, 0.2));
   }
 }

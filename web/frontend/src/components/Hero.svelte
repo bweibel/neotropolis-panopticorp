@@ -15,10 +15,7 @@
 <section class="hero" >
   <div class="hero-overlay"></div>
   <div class="hero-content">
-    <div class="logo-slot">
-      <img src="/images/logo-light.svg" alt="Panopticorp" class="logo" />
-    </div>
-    <h1 class="hero-title">{title}</h1>
+    <h1 class="hero-wordmark"> <img src="/images/wordmark-primary.svg" alt="Panopticorp" class="logo" /></h1>
     <p class="hero-tagline">{tagline}</p>
   </div>
 </section>
@@ -54,10 +51,6 @@
     margin-bottom: 2rem;
   }
 
-  .logo {
-    height: 8rem;
-    width: auto;
-  }
 
   .hero-title {
     font-family: "Ethnocentric";
@@ -65,8 +58,10 @@
     font-weight: 700;
     letter-spacing: 0.3em;
     margin: 0;
-    color: var(--color-primary);
-    animation: crt-glow-primary 0.1s steps(10) infinite;
+  }
+
+  .hero-wordmark {
+    animation: crt-glow-logo-primary 0.1s steps(10) infinite;
   }
 
   .hero-tagline {
@@ -77,7 +72,7 @@
     margin-top: 1rem;
     color: var(--color-text);
     text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
-      animation: crt-glow-text 0.1s steps(10) infinite;
+    animation: crt-glow-text 0.1s steps(10) infinite;
 
   }
 </style>
