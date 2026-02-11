@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.svelte-kit/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Database
+*.sqlite
+*.db
+
+# Temporary files
+tmp/
+.tmp/
+*.tmp
+
+# Coverage
+coverage/
+
+# Large media (tracked separately or via LFS)
+*.psd
+*.ai
+*.sketch
