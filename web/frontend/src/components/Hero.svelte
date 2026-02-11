@@ -7,7 +7,8 @@
 
   let {
     title = 'PANOPTICORP',
-    tagline = 'Building a Safer Tomorrow Through Total Awareness of the Present',
+    tagline = 'Embracing surveillance today to Ensure a safer tomorrow',
+    taglineAlt = '監視をいま受け入れ、より安全な明日へ',
     backgroundImage = '/images/nobackground.png'
   }: Props = $props();
 </script>
@@ -44,7 +45,6 @@
     z-index: 1;
     text-align: center;
     padding: 2rem;
-    max-width: 800px;
   }
 
   .logo-slot {

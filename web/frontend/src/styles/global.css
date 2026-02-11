@@ -36,9 +36,9 @@
   --color-dark: #140E00;
 
   /* Typography */
+  --font-heading: 'Ethnocentric', sans-serif;
   --font-sans: "Orbitron", system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  --font-heading: 'Ethnocentric', sans-serif;
   --font-tech: 'Orbitron', sans-serif;
 }
 
@@ -61,18 +61,17 @@ body {
   color: var(--color-text);
   line-height: 1.6;
   font-family: "Orbitron";
-
+  font-size: 24px;
 }
 
 .crt-overlay {
     background-image: url("/images/overlay-test.png");
 }
 
-p, a  
+p, a, h1, h2, h3, h4
 {
   animation: crt-glow-primary 0.1s steps(10) infinite;
 }
-
 
 a {
   color: var(--color-primary);
@@ -152,8 +151,8 @@ a:hover {
   50% {
     filter:
       drop-shadow(0 0 8px rgba(234, 105, 28, 0.45))
-      drop-shadow(0 0 16px rgba(234, 105, 28, 0.23))
-      drop-shadow(1px 0 4px rgba(255, 150, 50, 0.2));
+      drop-shadow(0 0 16px rgba(234, 105, 28, 0.266))
+      drop-shadow(1px 0 4px rgba(255, 150, 50, 0.21));
   }
 }
 
