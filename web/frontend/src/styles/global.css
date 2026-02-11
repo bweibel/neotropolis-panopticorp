@@ -70,7 +70,7 @@ body {
 
 p, a, h1, h2, h3, h4
 {
-  animation: crt-glow-primary 0.1s steps(10) infinite;
+  animation: crt-glow-text 0.1s steps(10) infinite;
 }
 
 a {
