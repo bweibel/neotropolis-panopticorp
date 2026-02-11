@@ -1,4 +1,7 @@
 <script lang="ts">
+  import Navbar from './components/Navbar.svelte';
+  import Footer from './components/Footer.svelte';
+
   let status = $state<string>('Checking connection...');
 
   async function checkApi() {
@@ -16,6 +19,8 @@
   });
 </script>
 
+<Navbar />
+
 <main>
   <div class="container">
     <div class="logo">
@@ -28,15 +33,13 @@
       <span class="status-text">{status}</span>
     </div>
 
-    <div class="notice">
-      <p>This site is under construction.</p>
-      <p class="small">All activities are monitored for your protection.</p>
-    </div>
   </div>
+  <Footer />
 </main>
 
 <style>
   main {
+    padding-top: 4rem;
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -87,17 +90,5 @@
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
-  }
-
-  .notice {
-    border: 1px solid var(--color-border);
-    padding: 1.5rem 2rem;
-    font-size: 0.875rem;
-  }
-
-  .notice .small {
-    font-size: 0.75rem;
-    opacity: 0.5;
-    margin-top: 0.5rem;
   }
 </style>
