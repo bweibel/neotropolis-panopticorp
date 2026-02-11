@@ -28,15 +28,16 @@
 
 :root {
   /* Colors - placeholder, update after brand decisions */
-  --color-base: #0B0F14;
+  --color-base: #141606;
   --color-text: #ECE6DA;
-  --color-primary: #FFB000;
+  --color-primary: #EA691C;
+  --color-primary-dark: #502310;
+  --color-contrast: #3A947D;
   --color-dark: #140E00;
 
   /* Typography */
-  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-sans: "Orbitron", system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  --font-display: 'Dune Rise', sans-serif;
   --font-heading: 'Ethnocentric', sans-serif;
   --font-tech: 'Orbitron', sans-serif;
 }
@@ -60,7 +61,18 @@ body {
   color: var(--color-text);
   line-height: 1.6;
   font-family: "Orbitron";
+
 }
+
+.crt-overlay {
+    background-image: url("/images/overlay-test.png");
+}
+
+p, a  
+{
+  animation: crt-glow-primary 0.1s steps(10) infinite;
+}
+
 
 a {
   color: var(--color-primary);
@@ -69,4 +81,60 @@ a {
 
 a:hover {
   text-decoration: underline;
+}
+
+/* CRT Glow Effects */
+
+/* Primary color glow (#EA691C - orange/red) */
+@keyframes crt-glow-primary {
+  0%, 100% {
+    text-shadow:
+      0 0 12px rgba(234, 105, 28, 0.4),
+      0 0 22px rgba(234, 105, 28, 0.25),
+      -1px 0 6px rgba(255, 60, 0, 0.22),
+      1px 0 6px rgba(255, 150, 50, 0.2);
+  }
+  50% {
+    text-shadow:
+      0 0 12px rgba(234, 105, 28, 0.35),
+      0 0 22px rgba(234, 105, 28, 0.2),
+      -1px 0 6px rgba(255, 60, 0, 0.17),
+      1px 0 6px rgba(255, 150, 50, 0.15);
+  }
+}
+
+/* Text color glow (#ECE6DA - cream) */
+@keyframes crt-glow-text {
+  0%, 100% {
+    text-shadow:
+      0 0 12px rgba(236, 230, 218, 0.4),
+      0 0 22px rgba(236, 230, 218, 0.25),
+      -1px 0 6px rgba(255, 245, 230, 0.22),
+      1px 0 6px rgba(220, 210, 195, 0.2);
+  }
+  50% {
+    text-shadow:
+      0 0 12px rgba(236, 230, 218, 0.35),
+      0 0 22px rgba(236, 230, 218, 0.2),
+      -1px 0 6px rgba(255, 245, 230, 0.17),
+      1px 0 6px rgba(220, 210, 195, 0.15);
+  }
+}
+
+/* Contrast color glow (#3A947D - teal) */
+@keyframes crt-glow-contrast {
+  0%, 100% {
+    text-shadow:
+      0 0 12px rgba(58, 148, 125, 0.4),
+      0 0 22px rgba(58, 148, 125, 0.25),
+      -1px 0 6px rgba(30, 180, 150, 0.22),
+      1px 0 6px rgba(80, 120, 100, 0.2);
+  }
+  50% {
+    text-shadow:
+      0 0 12px rgba(58, 148, 125, 0.35),
+      0 0 22px rgba(58, 148, 125, 0.2),
+      -1px 0 6px rgba(30, 180, 150, 0.17),
+      1px 0 6px rgba(80, 120, 100, 0.15);
+  }
 }

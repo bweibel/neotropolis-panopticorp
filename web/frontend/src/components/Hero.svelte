@@ -8,11 +8,11 @@
   let {
     title = 'PANOPTICORP',
     tagline = 'Building a Safer Tomorrow Through Total Awareness of the Present',
-    backgroundImage = '/images/placeholderbanner.png'
+    backgroundImage = '/images/nobackground.png'
   }: Props = $props();
 </script>
 
-<section class="hero" style="--bg-image: url({backgroundImage})">
+<section class="hero" >
   <div class="hero-overlay"></div>
   <div class="hero-content">
     <div class="logo-slot">
@@ -39,12 +39,7 @@
   .hero-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0.7) 0%,
-      rgba(0, 0, 0, 0.5) 50%,
-      rgba(0, 0, 0, 0.8) 100%
-    );
+    background-position: cover;
   }
 
   .hero-content {
@@ -65,47 +60,24 @@
   }
 
   .hero-title {
-    font-family: "Dune Rise";
+    font-family: "Ethnocentric";
     font-size: clamp(2rem, 8vw, 4rem);
     font-weight: 700;
     letter-spacing: 0.3em;
     margin: 0;
     color: var(--color-primary);
-    animation: crt-glow 0.1s steps(10) infinite;
-  }
-
-  @keyframes crt-glow {
-    0% {
-      text-shadow:
-        0 0 12px rgba(255, 176, 0, 0.4),
-        0 0 22px rgba(255, 176, 0, 0.25),
-        -1px 0 6px rgba(255, 100, 0, 0.22),
-        1px 0 6px rgba(255, 220, 0, 0.2);
-    }
-    50% {
-      text-shadow:
-        0 0 12px rgba(255, 176, 0, 0.35),
-        0 0 22px rgba(255, 176, 0, 0.2),
-        -1px 0 6px rgba(255, 100, 0, 0.17),
-        1px 0 6px rgba(255, 220, 0, 0.15);
-    }
-    100% {
-      text-shadow:
-        0 0 12px rgba(255, 176, 0, 0.4),
-        0 0 22px rgba(255, 176, 0, 0.25),
-        -1px 0 6px rgba(255, 100, 0, 0.22),
-        1px 0 6px rgba(255, 220, 0, 0.2);
-    }
-
+    animation: crt-glow-primary 0.1s steps(10) infinite;
   }
 
   .hero-tagline {
-    font-size: clamp(0.75rem, 2vw, 1rem);
+    font-size: clamp(1.75rem, 2vw, 2rem);
     letter-spacing: 0.2em;
     text-transform: uppercase;
     opacity: 0.8;
     margin-top: 1rem;
     color: var(--color-text);
     text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
+      animation: crt-glow-text 0.1s steps(10) infinite;
+
   }
 </style>

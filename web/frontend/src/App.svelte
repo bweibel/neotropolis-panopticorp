@@ -24,7 +24,6 @@
 
 <main>
   <Hero />
-
   <section class="status-section">
     <div class="status">
       <span class="status-indicator"></span>
