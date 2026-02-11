@@ -1,6 +1,6 @@
 # Panopticorp: Neotropolis Event Project
 
-Evil surveillance corporation for cyberpunk event (April 2025).
+Evil surveillance corporation for cyberpunk event (May 2026).
 
 ## Components
 - Corporate website with hidden secrets
@@ -13,7 +13,7 @@ Evil surveillance corporation for cyberpunk event (April 2025).
 - Hosting: [Your existing infrastructure]
 
 ## Timeline
-3-month sprint: Feb-April 2025
+3-month sprint: Feb-May 2026
 
 See `docs/timeline.md` for detailed schedule.
 
