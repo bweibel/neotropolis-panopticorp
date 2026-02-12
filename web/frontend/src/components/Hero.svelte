@@ -1,5 +1,6 @@
 <script lang="ts">
   import { typedText } from '$lib/actions/typedText';
+    import Wordmark from './Wordmark.svelte';
   
   interface Props {
     title?: string;
@@ -18,7 +19,7 @@
 
 <section class="hero" >
   <div class="hero-content">
-    <h1 class="hero-wordmark"> <img src="/images/wordmark-primary.svg" alt="Panopticorp" class="logo" /></h1>
+    <Wordmark />
     <div class="hero-taglines">
       <h2 class="hero-tagline" use:typedText>{tagline}</h2>
       <h2 class="hero-tagline" use:typedText>{tagline2}</h2>
@@ -31,6 +32,7 @@
 <style>
 
   .hero-content {
+    padding-block: 1rem;
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
@@ -43,25 +45,13 @@
     margin: 0;
   }
   
-  .hero-wordmark {
-    will-change: filter;
-    animation: crt-glow-logo-primary .1s  infinite;
-    margin: 0;
-    flex-basis: 20rem;
-    flex-grow: 1;
-    display: flex;
-  }
-  
-  .hero-wordmark img {
-    max-width: 100%;
-    margin: 0;
-  }
+
 
 
 .hero-taglines {
     flex-basis: 50%;
     min-width: fit-content;
-    height: clamp(1rem, 1.5vw, 2rem);
+    height: 50%;
     font-size: clamp(.8rem, 1.5vw, 1.5rem);
 }
 

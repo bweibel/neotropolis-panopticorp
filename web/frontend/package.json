@@ -10,11 +10,13 @@
     "typecheck": "svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "@panopticorp/shared": "workspace:*"
+    "@panopticorp/shared": "workspace:*",
+    "animejs": "^4.3.5"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
     "@tsconfig/svelte": "^5.0.4",
+    "@types/animejs": "^3.1.13",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "typescript": "^5.3.3",

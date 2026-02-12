@@ -1,3 +1,5 @@
+import { createTimer, type Timer } from 'animejs';
+
 export interface TypedTextOptions {
   speed?: number;       // ms per character (default: 50)
   cursor?: boolean;     // show blinking cursor (default: true)
@@ -16,55 +18,61 @@ function processQueue() {
 }
 
 export function typedText(node: HTMLElement, options: TypedTextOptions = {}) {
-  const { speed = 10, cursor = true, queue: useQueue = true } = options;
+  const { speed = 30, cursor = true, queue: useQueue = true } = options;
 
   const fullText = node.textContent || '';
+  const chars = fullText.split('');
   node.textContent = '';
   node.style.visibility = 'visible';
 
   let cursorEl: HTMLSpanElement | null = null;
+  let timer: Timer | null = null;
   let charIndex = 0;
-  let timeoutId: ReturnType<typeof setTimeout>;
 
-  function createCursor() {
-    if (!cursor) return;
+  if (cursor) {
     cursorEl = document.createElement('span');
     cursorEl.className = 'typed-cursor';
     cursorEl.textContent = '▌';
     node.appendChild(cursorEl);
   }
 
-  function typeNextChar() {
-    if (charIndex < fullText.length) {
-      const textNode = document.createTextNode(fullText[charIndex]);
-      if (cursorEl) {
-        node.insertBefore(textNode, cursorEl);
-      } else {
-        node.appendChild(textNode);
-      }
-      charIndex++;
-      timeoutId = setTimeout(typeNextChar, speed);
-    } else {
-      // Typing complete
-      if (cursorEl) {
-        setTimeout(() => {
-          cursorEl?.classList.add('typed-cursor-done');
-        }, 500);
-      }
-      node.dispatchEvent(new CustomEvent('typingcomplete'));
-
-      // Signal queue that we're done
-      isTyping = false;
-      processQueue();
-    }
-  }
-
   function startTyping() {
-    createCursor();
-    typeNextChar();
+    timer = createTimer({
+      duration: chars.length * speed,
+      onUpdate: (self) => {
+        const newIndex = Math.floor((self.currentTime / speed));
+        while (charIndex < newIndex && charIndex < chars.length) {
+          const textNode = document.createTextNode(chars[charIndex]);
+          if (cursorEl) {
+            node.insertBefore(textNode, cursorEl);
+          } else {
+            node.appendChild(textNode);
+          }
+          charIndex++;
+        }
+      },
+      onComplete: () => {
+        // Type any remaining chars
+        while (charIndex < chars.length) {
+          const textNode = document.createTextNode(chars[charIndex]);
+          if (cursorEl) {
+            node.insertBefore(textNode, cursorEl);
+          } else {
+            node.appendChild(textNode);
+          }
+          charIndex++;
+        }
+
+        if (cursorEl) {
+          setTimeout(() => cursorEl?.classList.add('typed-cursor-done'), 500);
+        }
+        node.dispatchEvent(new CustomEvent('typingcomplete'));
+        isTyping = false;
+        processQueue();
+      }
+    });
   }
 
-  // Either queue or start immediately
   if (useQueue) {
     queue.push(startTyping);
     processQueue();
@@ -74,8 +82,7 @@ export function typedText(node: HTMLElement, options: TypedTextOptions = {}) {
 
   return {
     destroy() {
-      clearTimeout(timeoutId);
-      // If destroyed while typing, let queue continue
+      timer?.pause();
       if (isTyping) {
         isTyping = false;
         processQueue();

@@ -25,7 +25,6 @@
 
 <style>
   .status-section {
-    padding: 3rem 2rem;
     text-align: center;
   }
 
@@ -34,13 +33,14 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    font-family: var(--font-mono);
+    text-transform: uppercase;
+    /* font-family: var(--font-mono); */
     font-size: 0.875rem;
   }
 
   .status-indicator {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
     background: var(--color-contrast);
     animation: pulse 2s ease-in-out infinite;
