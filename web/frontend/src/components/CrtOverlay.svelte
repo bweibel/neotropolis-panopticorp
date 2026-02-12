@@ -4,9 +4,9 @@
 <style>
     .crt-overlay {
         background: url(/images/rgb-bg.jpg);
-        background-color: var(--color-dark);
+        background-color: #000;
         background-size: 12px;
-        background-blend-mode: multiply;
+        background-blend-mode: darken;
         position: fixed;
         top: 0;
         bottom: 0;
@@ -16,5 +16,4 @@
         opacity: 0.3;
         pointer-events: none;
     }
-
 </style>

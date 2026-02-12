@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { typedText } from '$lib/actions/typedText';
+  
   interface Props {
     title?: string;
     tagline?: string;
@@ -17,27 +19,11 @@
   <div class="hero-overlay"></div>
   <div class="hero-content">
     <h1 class="hero-wordmark"> <img src="/images/wordmark-primary.svg" alt="Panopticorp" class="logo" /></h1>
-    <p class="hero-tagline">{tagline}</p>
+    <h2 class="hero-tagline" use:typedText>{tagline}</h2>
   </div>
 </section>
 
 <style>
-  .hero {
-    position: relative;
-    min-height: 50vh;
-    max-width: 80rem;
-    width: 100%;
-    margin:  10rem auto;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-image: var(--bg-image);
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    border: 4px dashed var(--color-primary-dark);
-  }
 
   h1 img {
     max-width: 100%;
@@ -54,7 +40,6 @@
     margin-bottom: 2rem;
   }
 
-
   .hero-title {
     font-family: "Ethnocentric";
     font-size: clamp(2rem, 8vw, 4rem);
@@ -64,18 +49,12 @@
   }
 
   .hero-wordmark {
-    animation: crt-glow-logo-primary 0.1s steps(10) infinite;
+    will-change: filter;
+    animation: crt-glow-logo-primary .1s  infinite;
   }
 
   .hero-tagline {
-    font-size: clamp(1.75rem, 2vw, 2rem);
-    letter-spacing: 0.2em;
     text-transform: uppercase;
-    opacity: 0.8;
     margin-top: 1rem;
-    color: var(--color-text);
-    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
-    animation: crt-glow-text 0.1s steps(10) infinite;
-
   }
 </style>
