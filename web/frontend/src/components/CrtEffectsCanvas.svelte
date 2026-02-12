@@ -128,14 +128,15 @@
   });
 </script>
 
-<canvas
-  bind:this={canvas}
-  class="crt-effects-canvas"
-  aria-hidden="true"
-></canvas>
+<div class="crt-effects-canvas">
+  <canvas
+    bind:this={canvas}
+    aria-hidden="true"
+  ></canvas>
+</div>
 
 <style>
-  .crt-effects-canvas {
+.crt-effects-canvas {
     position: fixed;
     top: 0;
     left: 0;
@@ -143,5 +144,5 @@
     height: 100%;
     pointer-events: none;
     z-index: 99;
-  }
+}
 </style>

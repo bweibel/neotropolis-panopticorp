@@ -40,7 +40,7 @@
   --color-primary: #EA691C;
   --color-primary-dark: #502310;
   --color-contrast: #3A947D;
-  --color-dark: #140E00;
+  --color-dark: #0e0900;
 
   /* Typography */
   --font-heading: 'Ethnocentric', sans-serif;
@@ -74,21 +74,36 @@ body {
 /* layout */
 main {
     display: grid;
-    
+    grid-template-columns: 5rem auto 5rem;
+    gap: 1rem;
+    padding: 1rem;
+    grid-template-areas: 
+    "   hero hero hero"
+    "   mission mission mission"
+    "   footer footer footer";
+}
+
+@media screen and (width >= 30rem) {
+  main {
+    grid-template-columns: repeat(6, minmax(5rem, 10rem));
+    gap: 1rem;
+    padding: 1rem;
+    grid-template-areas: 
+    "hero hero hero hero hero hero"
+    "mission mission mission mission mission mission"
+    "footer footer footer footer footer footer";
+  }
 }
 
 @media screen and (width >= 72rem) {
-  main {
-    display: grid;
-    
+  main {    
     grid-template-columns: repeat(12, minmax(5rem, 10rem));
-    grid-auto-rows: 10rem;
     gap: 1rem;
     padding: 1rem;
     grid-template-areas: 
     "hero hero hero hero hero hero hero hero hero hero hero hero"
-    ". . mission mission mission mission mission mission mission mission mission mission";
-
+    "decoration-1 decoration-1 mission mission mission mission mission mission mission mission . ."
+    ". . . . . . . . . footer footer footer";
   }
 }
 
@@ -101,6 +116,16 @@ main {
 grid-area: mission;
 }
 
+.plus-grid {
+  grid-area: decoration-1;
+  width: 100%;
+  height: 100%;
+  background-color: url("images/screenparts/plus.svg");
+}
+
+footer {
+  grid-area: footer;
+}
 
 /* Typography */
 p, a, h1, h2, h3, h4 {

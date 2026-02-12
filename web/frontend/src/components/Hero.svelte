@@ -32,7 +32,7 @@
 
   .hero-content {
     display: flex;
-    /* flex-wrap: wrap; */
+    flex-wrap: wrap;
     gap: 1rem;
     flex-basis: content;
   }
@@ -47,9 +47,9 @@
     will-change: filter;
     animation: crt-glow-logo-primary .1s  infinite;
     margin: 0;
-    flex-basis: 50rem;
+    flex-basis: 20rem;
     flex-grow: 1;
-    align-self: center;
+    display: flex;
   }
   
   .hero-wordmark img {
@@ -60,10 +60,9 @@
 
 .hero-taglines {
     flex-basis: 50%;
-    align-self: center;
-
-  min-width: fit-content;
-  font-size: clamp(1rem, 1.5vw, 2rem);
+    min-width: fit-content;
+    height: clamp(1rem, 1.5vw, 2rem);
+    font-size: clamp(.8rem, 1.5vw, 1.5rem);
 }
 
   .hero-tagline {

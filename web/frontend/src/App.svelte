@@ -12,45 +12,8 @@
 
 <main>
   <Hero />
-  <ScreenElement gridColumn="1" gridRow="1"/> 
-  <ScreenElement gridColumn="2" gridRow="1" /> 
-  <ScreenElement gridColumn="3" gridRow="1" /> 
-  <ScreenElement gridColumn="4" gridRow="1"/> 
-  <ScreenElement gridColumn="5" gridRow="1" /> 
-  <ScreenElement gridColumn="6" gridRow="1" /> 
-  <ScreenElement gridColumn="7" gridRow="1"/> 
-  <ScreenElement gridColumn="8" gridRow="1" /> 
-  <ScreenElement gridColumn="9" gridRow="1" /> 
-  <ScreenElement gridColumn="10" gridRow="1" /> 
-  <ScreenElement gridColumn="11" gridRow="1" /> 
-  <ScreenElement gridColumn="12" gridRow="1" /> 
 
-  <ScreenElement gridColumn="1" gridRow="2" type="horizontal" width="100%"/> 
-  <ScreenElement gridColumn="1" gridRow="2" /> 
-  <ScreenElement gridColumn="2" gridRow="2" type="horizontal" width="100%"/> 
-  <ScreenElement gridColumn="2" gridRow="2" /> 
-  <ScreenElement gridColumn="3" gridRow="2" type="horizontal" width="100%"/> 
-  <ScreenElement gridColumn="3" gridRow="2" /> 
-  <ScreenElement gridColumn="4" gridRow="2" type="horizontal" width="100%"/> 
-  <ScreenElement gridColumn="4" gridRow="2" /> 
-  <ScreenElement gridColumn="5" gridRow="2" type="horizontal" width="100%"/> 
-  <ScreenElement gridColumn="5" gridRow="2" /> 
-  <ScreenElement gridColumn="6" gridRow="2" type="horizontal" width="100%"/> 
-  <ScreenElement gridColumn="6" gridRow="2" /> 
-
-  <ScreenElement gridColumn="7" gridRow="2" type="horizontal" width="100%"/> 
-  <ScreenElement gridColumn="7" gridRow="2" /> 
-  <ScreenElement gridColumn="8" gridRow="2" type="horizontal" width="100%"/> 
-  <ScreenElement gridColumn="8" gridRow="2" /> 
-  <ScreenElement gridColumn="9" gridRow="2" type="horizontal" width="100%"/> 
-  <ScreenElement gridColumn="9" gridRow="2" /> 
-  <ScreenElement gridColumn="10" gridRow="2" type="horizontal" width="100%"/> 
-  <ScreenElement gridColumn="10" gridRow="2" /> 
-  <ScreenElement gridColumn="11" gridRow="2" type="horizontal" width="100%"/> 
-  <ScreenElement gridColumn="11" gridRow="2" /> 
-  <ScreenElement gridColumn="12" gridRow="2" type="horizontal" width="100%"/> 
-  <ScreenElement gridColumn="12" gridRow="2" /> 
-
+<div class="plus-grid"></div>
 
   <div class="mission ">
     <p >At Panopticorp, we're building a new age of civic certainty. Our unsurpassed analytical capability takes the guessing out of Gaussian probability and the neuroses out of neural networks -- deus in machina, born of machine learning. If you want to make a secure society from scratch, you must first gather enough data.</p>
@@ -61,4 +24,4 @@
   <Footer />
 </main>
 <ScanlinesOverlay />
-<CrtOverlay />
+<CrtEffectsCanvas />
