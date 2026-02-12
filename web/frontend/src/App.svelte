@@ -2,6 +2,7 @@
   import Hero from './components/Hero.svelte';
   import Footer from './components/Footer.svelte';
   import CrtOverlay from './components/CrtOverlay.svelte';
+    import ScanlinesOverlay from './components/ScanlinesOverlay.svelte';
 </script>
 
 <main>
@@ -14,6 +15,7 @@
   </div>
   <Footer />
 </main>
+<ScanlinesOverlay />
 <CrtOverlay />
 
 <style>
