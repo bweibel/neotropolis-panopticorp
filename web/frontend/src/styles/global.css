@@ -72,10 +72,33 @@ body {
 }
 
 /* layout */
-#app {
+main {
     display: grid;
-    grid-template-columns: auto;
-    grid-template-rows: auto;
+    
+}
+
+@media screen and (width >= 72rem) {
+  main {
+    display: grid;
+    
+    grid-template-columns: repeat(12, minmax(5rem, 10rem));
+    grid-auto-rows: 10rem;
+    gap: 1rem;
+    padding: 1rem;
+    grid-template-areas: 
+    "hero hero hero hero hero hero hero hero hero hero hero hero"
+    ". . mission mission mission mission mission mission mission mission mission mission";
+
+  }
+}
+
+.hero {
+  grid-area: hero;
+  align-self: center;
+}
+
+.mission {
+grid-area: mission;
 }
 
 
