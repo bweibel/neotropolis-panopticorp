@@ -52,6 +52,7 @@
     flex-basis: 50%;
     min-width: fit-content;
     height: 50%;
+        align-self: center;
     font-size: clamp(.8rem, 1.5vw, 1.5rem);
 }
 
