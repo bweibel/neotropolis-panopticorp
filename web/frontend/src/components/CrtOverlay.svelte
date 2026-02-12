@@ -5,9 +5,8 @@
     .crt-overlay {
         background: url(/images/rgb-bg.jpg);
         background-color: var(--color-dark);
-        background-size: 20px;
-        background-blend-mode: darken;
-        /* animation: crt-overlay-flicker .1s steps(1) infinite; */
+        background-size: 12px;
+        background-blend-mode: multiply;
         position: fixed;
         top: 0;
         bottom: 0;

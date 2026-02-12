@@ -17,14 +17,3 @@
 </main>
 <ScanlinesOverlay />
 <CrtOverlay />
-
-<style>
-  .mission {
-    max-width: 60em;
-    margin: auto;
-  }
-
-  .mission h3 {
-    text-align: center;
-  }
-</style>
