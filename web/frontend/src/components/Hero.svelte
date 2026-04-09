@@ -23,7 +23,6 @@
     <div class="hero-taglines">
       <h2 class="hero-tagline" use:typedText>{tagline}</h2>
       <h2 class="hero-tagline" use:typedText>{tagline2}</h2>
-
     </div>
 
   </div>
@@ -53,7 +52,7 @@
     min-width: fit-content;
     height: 50%;
         align-self: center;
-    font-size: clamp(.8rem, 1.5vw, 1.5rem);
+    font-size: clamp(.6rem, 1.5vw, 1.2rem);
 }
 
   .hero-tagline {

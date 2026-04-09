@@ -1,11 +1,12 @@
 <script>
+    import { fastType } from '$lib/animations';
     import StatusSection from './StatusSection.svelte';
 </script>
 
-<footer class="notice " >
-  <p>This site is under construction.<br>----</p>
-  <p >All activities are monitored for your protection.</p>
-  <p>ちくしょう、読めたらいいのに。</p>
+<footer class="notice" >
+  <p use:fastType>This site is under construction.<br>----</p>
+  <p use:fastType>All activities are monitored for your protection.</p>
+  <p use:fastType>ちくしょう、読めたらいいのに。</p>
   <StatusSection />
 </footer>
 

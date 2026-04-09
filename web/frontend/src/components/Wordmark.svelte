@@ -19,6 +19,8 @@
       width: 1000px;
       margin: 0;
       height: auto;
+      display: flex;
+      align-items: center;
     }
 
 </style>
