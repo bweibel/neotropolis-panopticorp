@@ -3,9 +3,11 @@
 Evil surveillance corporation for cyberpunk event (May 2026).
 
 ## Components
-- Corporate website with hidden secrets
-- Multi-layer hacking game
+- Corporate website (atmospheric, polished)
 - Physical vehicle installation (Subaru Baja → RSU)
+
+### Shelved for May 2026 (future years)
+- Multi-layer hacking game (minigames, narrative progression, easter eggs)
 
 ## Tech Stack
 - Frontend: Svelte 5 + Vite + TypeScript
