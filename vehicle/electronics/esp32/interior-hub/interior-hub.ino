@@ -1,38 +1,33 @@
 // =============================================================================
-// interior-hub — ESP32 #1 (no camera)
+// interior-hub — QT PY RP2040 (Adafruit 4900)
 // Role: Listens to Uno R4 serial events, controls interior lighting zones,
-//       and forwards scene changes to exterior node via ESP-NOW.
+//       and forwards scene changes to exterior node via wired UART (Serial2).
 //
 // Power: Battery USB-C 18W
+// Core: arduino-pico (Earle Philhower)
 // See: vehicle/electronics/baja-lighting-spec.md
 // =============================================================================
 
 #include <FastLED.h>
-#include <esp_now.h>
-#include <WiFi.h>
 #include "scenes.h"
 
 // =============================================================================
-// Pin constants — interior lighting zones
+// Pin constants
 // =============================================================================
 
 // Dashboard WS2812B strips (2.7mm, 160 LEDs each)
-const int PIN_DASH_LEFT  = 13;
-const int PIN_DASH_RIGHT = 14;
+const int PIN_DASH_LEFT  = 6;   // SCK/D8
+const int PIN_DASH_RIGHT = 3;   // MO/D10
 
-// Floor footwell static RGB strips (MOSFET PWM, 3 pins per zone)
-// Zone layout: LEFT footwell
-const int PIN_FOOTWELL_L_R = 25;
-const int PIN_FOOTWELL_L_G = 26;
-const int PIN_FOOTWELL_L_B = 27;
-// Zone layout: RIGHT footwell
-const int PIN_FOOTWELL_R_R = 32;
-const int PIN_FOOTWELL_R_G = 33;
-const int PIN_FOOTWELL_R_B = 34;
+// Footwell static RGB strips — single on/off signal via MOSFET
+const int PIN_FOOTWELL   = 26;  // A3/D3
 
 // Serial RX from Uno R4 (one-way receive)
-const int PIN_SERIAL_RX = 16;
-const int PIN_SERIAL_TX = 17;  // unused but assigned
+const int PIN_SERIAL_RX  = 5;   // RX/D7
+const int PIN_SERIAL_TX  = 20;  // TX/D6 (unused)
+
+// Serial TX to exterior node
+const int PIN_EXT_TX     = 4;   // MI/D9
 
 // =============================================================================
 // LED strip configuration
@@ -44,70 +39,122 @@ CRGB dashLeft[DASH_NUM_LEDS];
 CRGB dashRight[DASH_NUM_LEDS];
 
 // =============================================================================
-// ESP-NOW — exterior node
-// =============================================================================
-
-uint8_t EXTERIOR_NODE_MAC[] = { 0xE8, 0xF6, 0x0A, 0x8B, 0xDC, 0x34 };
-
-typedef struct SceneMessage {
-  uint8_t scene;  // 0 = off, 1 = red, 2 = green
-} SceneMessage;
-
-esp_now_peer_info_t peerInfo;
-
-// =============================================================================
 // State
 // =============================================================================
 
 uint8_t currentScene = SCENE_OFF;
 
+unsigned long lastGlitterMs = 0;
+const unsigned long GLITTER_INTERVAL_MS = 30;  // ~33fps
+
 // =============================================================================
-// TODO: implement
-//   - Serial listener (HardwareSerial or SoftwareSerial on PIN_SERIAL_RX)
-//     Parse VOL_UP, VOL_DOWN, MUTE, SKIP_FWD, SKIP_BACK, SCENE_NEXT
-//   - Scene transition: update currentScene, send ESP-NOW SceneMessage
-//   - Glitter animation for dashboard WS2812B strips (non-blocking, main loop)
-//   - MOSFET PWM output for footwell static RGB strips
+// Scene management
 // =============================================================================
 
 void sendSceneToExterior(uint8_t scene) {
-  SceneMessage msg = { scene };
-  esp_now_send(EXTERIOR_NODE_MAC, (uint8_t*)&msg, sizeof(msg));
+  Serial2.println(scene);  // sends "0\n", "1\n", or "2\n"
 }
+
+void applySceneToFootwells(uint8_t scene) {
+  digitalWrite(PIN_FOOTWELL, scene == SCENE_OFF ? LOW : HIGH);
+}
+
+void advanceScene() {
+  currentScene = (currentScene + 1) % 3;
+  sendSceneToExterior(currentScene);
+  applySceneToFootwells(currentScene);
+  Serial.print("Scene: "); Serial.println(currentScene);
+}
+
+// =============================================================================
+// Serial listener (Uno R4 → hub)
+// =============================================================================
+
+void handleEvent(const String& evt) {
+  if (evt == "SCENE_NEXT") {
+    advanceScene();
+  }
+  // VOL_UP, VOL_DOWN, MUTE, SKIP_FWD, SKIP_BACK: no action for MVP
+  // Unknown events: silently ignored
+  Serial.println("EVT: " + evt);
+}
+
+void readSerial() {
+  static String buf = "";
+  while (Serial1.available()) {
+    char c = Serial1.read();
+    if (c == '\n') {
+      buf.trim();
+      handleEvent(buf);
+      buf = "";
+    } else {
+      buf += c;
+    }
+  }
+}
+
+// =============================================================================
+// Glitter animation (dashboard WS2812B)
+// =============================================================================
+
+void runGlitter(CRGB* strip, int numLeds, CRGB baseColor) {
+  CRGB base = baseColor;
+  base.nscale8(BASE_BRIGHTNESS);
+  fill_solid(strip, numLeds, base);
+
+  int glitterCount = max(1, (int)(numLeds * GLITTER_DENSITY));
+  for (int i = 0; i < glitterCount; i++) {
+    int idx = random16(numLeds);
+    uint8_t brightness = random8(GLITTER_MIN, GLITTER_MAX);
+    strip[idx] = baseColor;
+    strip[idx].nscale8(brightness);
+  }
+}
+
+void updateLighting() {
+  if (currentScene == SCENE_OFF) {
+    FastLED.clear();
+    FastLED.show();
+    return;
+  }
+
+  unsigned long now = millis();
+  if (now - lastGlitterMs >= GLITTER_INTERVAL_MS) {
+    lastGlitterMs = now;
+    CRGB color = (currentScene == SCENE_RED) ? COLOR_RED : COLOR_GREEN;
+    runGlitter(dashLeft,  DASH_NUM_LEDS, color);
+    runGlitter(dashRight, DASH_NUM_LEDS, color);
+    FastLED.show();
+  }
+}
+
+// =============================================================================
+// Setup + loop
+// =============================================================================
 
 void setup() {
   Serial.begin(115200);
+
+  // Serial1: receive from Uno R4
+  Serial1.setRX(PIN_SERIAL_RX);
+  Serial1.setTX(PIN_SERIAL_TX);
+  Serial1.begin(9600);
+
+  // Serial2: send scene index to exterior node
+  Serial2.setTX(PIN_EXT_TX);
+  Serial2.begin(9600);
 
   // FastLED
   FastLED.addLeds<WS2812B, PIN_DASH_LEFT,  GRB>(dashLeft,  DASH_NUM_LEDS);
   FastLED.addLeds<WS2812B, PIN_DASH_RIGHT, GRB>(dashRight, DASH_NUM_LEDS);
   FastLED.clear(true);
 
-  // Footwell MOSFET pins
-  pinMode(PIN_FOOTWELL_L_R, OUTPUT);
-  pinMode(PIN_FOOTWELL_L_G, OUTPUT);
-  pinMode(PIN_FOOTWELL_L_B, OUTPUT);
-  pinMode(PIN_FOOTWELL_R_R, OUTPUT);
-  pinMode(PIN_FOOTWELL_R_G, OUTPUT);
-  pinMode(PIN_FOOTWELL_R_B, OUTPUT);
-
-  // ESP-NOW
-  WiFi.mode(WIFI_STA);
-  if (esp_now_init() != ESP_OK) {
-    Serial.println("ESP-NOW init failed");
-    return;
-  }
-  memcpy(peerInfo.peer_addr, EXTERIOR_NODE_MAC, 6);
-  peerInfo.channel = 0;
-  peerInfo.encrypt = false;
-  esp_now_add_peer(&peerInfo);
-
-  // TODO: initialize serial listener on PIN_SERIAL_RX at 9600 baud
+  // Footwell on/off
+  pinMode(PIN_FOOTWELL, OUTPUT);
+  applySceneToFootwells(SCENE_OFF);
 }
 
 void loop() {
-  // TODO: read serial events from Uno
-  // TODO: handle SCENE_NEXT — advance currentScene, call sendSceneToExterior()
-  // TODO: run glitter animation on dashLeft / dashRight when scene != SCENE_OFF
-  // TODO: update footwell MOSFET PWM to match current scene color
+  readSerial();
+  updateLighting();
 }
