@@ -23,11 +23,19 @@ This is throwaway — just a smoke test. It will be replaced in Phase 2.
 ## Hardware
 
 - **Display:** Waveshare 2inch LCD Module, ST7789V controller, 240×320, SPI
-- **MCU:** Arduino Uno R4 WiFi (prototype)
+- **Prototype MCU:** Arduino Uno R4 WiFi (Phase 1 only)
+- **Target MCU (event + permanent):** ESP32-S3 with PSRAM
 
-### Pin conflict note
+### Why ESP32-S3 with PSRAM for event hardware
+- Hardware SPI at 40–80MHz enables smooth animation (software SPI on Uno R4 is too slow for Phase 2+)
+- PSRAM provides headroom for framebuffers and animation state alongside display rendering
+- Dedicated MCU keeps display work isolated from lighting coordination
+- Powered from car 12V permanently (same as Uno R4)
+- Receives scene index via wired UART from RP2040 interior hub
 
-The Uno R4 hardware SPI pins (SCK=13, MOSI=11) are occupied by the X9C104 pot (`PIN_POT_CS=13`, `PIN_POT_INC=11`). Use **software SPI** on free pins for the display.
+### Phase 1 pin assignment (Uno R4 prototype — software SPI)
+
+The Uno R4 hardware SPI pins (SCK=13, MOSI=11) are occupied by the X9C104 pot. Use software SPI on free analog pins.
 
 | Display pin | Uno R4 pin | Notes |
 |---|---|---|
@@ -38,6 +46,10 @@ The Uno R4 hardware SPI pins (SCK=13, MOSI=11) are occupied by the X9C104 pot (`
 | RST | A5 | Reset |
 | VCC | 3.3V | ST7789V is 3.3V logic |
 | GND | GND | |
+
+### Phase 2+ pin assignment (ESP32-S3 target — hardware SPI)
+
+Pin assignments TBD when ESP32-S3 board is selected. Use hardware SPI (VSPI or HSPI) — no pin conflicts on a dedicated board.
 
 All pins defined as named constants. No magic numbers.
 
@@ -115,10 +127,11 @@ void drawTestPattern() {
 
 ## Next phases (not current scope)
 
-- **Phase 2:** Static IRIS housing illustration — the approved visual design rendered as vector-style primitives
-- **Phase 3:** Ticker scrolling text
-- **Phase 4:** Mood state transitions driven by serial events from Uno
-- **Phase 5:** Integration into `PioneerController.ino` — display updates on input events
+- **Phase 2:** Static IRIS housing illustration — approved visual design rendered as vector-style primitives (still on Uno R4)
+- **Phase 3:** Migrate to ESP32-S3 with PSRAM — hardware SPI, standalone sketch
+- **Phase 4:** Ticker scrolling text
+- **Phase 5:** Scene-driven color mode (cyan → red → green) via UART from RP2040 hub
+- **Phase 6:** Mood state transitions driven by scene/input events
 
 ---
 

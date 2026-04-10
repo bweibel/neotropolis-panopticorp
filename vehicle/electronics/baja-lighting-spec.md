@@ -8,7 +8,7 @@ This document is a handoff spec for Claude Code. It defines the full software ar
 
 ## System Overview
 
-Two independent software systems sharing a one-way serial link.
+Three independent software systems sharing one-way serial links.
 
 **Permanent system** (Arduino Uno R4 WiFi, car 12V ignition-switched):
 - Reads physical inputs (encoder, buttons, toggles)
@@ -16,8 +16,14 @@ Two independent software systems sharing a one-way serial link.
 - Broadcasts serial events regardless of whether anything is listening
 
 **Removable lighting module** (battery powered):
-- QT Py RP2040 Interior Hub: listens to Uno serial, controls interior strips, sends scene index to exterior node via wired UART
+- QT Py RP2040 Interior Hub: listens to Uno serial, controls interior strips, sends scene index to exterior node and IRIS display via wired UART
 - ESP32-S3 Exterior Node: receives scene index via wired UART from hub, controls exterior strips and Pixelblaze
+
+**Permanent display module** (car 12V or dedicated supply):
+- ESP32-S3 with PSRAM — IRIS display character
+- Receives scene index via wired UART from RP2040 hub
+- Drives Waveshare 2" ST7789V LCD via hardware SPI
+- Handles all display animation independently
 
 ---
 
@@ -28,8 +34,8 @@ Two independent software systems sharing a one-way serial link.
 | Arduino Uno R4 WiFi | Head unit controller, input surface | Car 12V |
 | QT Py RP2040 (Adafruit 4900) | Interior lighting hub | Battery 18W USB-C |
 | ESP32-S3 (with camera) | Exterior lighting node | Battery 100W USB-C |
+| ESP32-S3 with PSRAM | IRIS display character | Car 12V (permanent) |
 | Pixelblaze V3 Standard | Top scanner + rear window strips | Battery (via exterior node power rail) |
-| LCD display | Mode and status display | Uno R4 |
 
 ---
 
@@ -164,38 +170,43 @@ Pixelblaze is configured independently via its web UI. It does not receive seria
 ### Battery USB-C 100W (exterior module)
 
 - USB-C PD trigger board (negotiates 5V, min 15A rated)
-- ESP32 #2 (exterior node)
+- ESP32-S3 exterior node
 - All exterior WS2812B strips via 5V rail
-- Wheel well static strips via MOSFET PWM from ESP32
+- Wheel well static strips via MOSFET PWM
 - Pixelblaze V3 Standard (shares 5V rail or dedicated tap)
 
 ### Battery USB-C 18W (interior module)
 
 - USB-C PD trigger board (negotiates 5V)
-- ESP32 #1 (interior hub)
+- QT Py RP2040 (interior hub)
 - Dashboard WS2812B strips via 5V rail
-- Floor footwell static strips via MOSFET PWM from ESP32
+- Floor footwell static strips via MOSFET PWM
 
-Note: USB-C PD trigger boards required. Cannot wire LED strips directly to USB-C. Purchase boards rated for target amperage before wiring.
+### Car 12V — IRIS display module (permanent)
+
+- ESP32-S3 with PSRAM (IRIS display character)
+- Waveshare 2" ST7789V LCD
+- Powered from car 12V via 3.3V regulator (display and ESP32 are 3.3V logic)
+
+Note: USB-C PD trigger boards required for lighting modules. Cannot wire LED strips directly to USB-C. Purchase boards rated for target amperage before wiring.
 
 ---
 
-## Existing Code
+## Code
 
-### Files
-
-- `PioneerController-ProtoThread.ino` (~420 lines): main sketch
+### arduino/PioneerController/
+- `PioneerController.ino`: merged sketch — Pioneer control, serial event emission, protothread3 for buttons/toggle
 - `X9C.h` / `X9C.cpp`: digital pot driver (MIT, Phil Bowles 2017)
 - `pt.h`, `lc.h`, `lc-switch.h`, `lc-addrlabels.h`, `pt-sem.h`: Protothreads (Contiki OS, Adam Dunkels)
 
-### Known Bugs to Fix
+### esp32/interior-hub/
+- `interior-hub.ino`: RP2040 sketch — serial listener, glitter animation, scene management, exterior UART TX
 
-Both are off-by-one array boundary errors:
+### esp32/exterior-node/
+- `exterior-node.ino`: ESP32-S3 sketch — serial listener, glitter animation across all exterior zones
 
-1. `IncreaseQueueIndex()`: checks `> QUEUEMAXSIZE` should be `>= QUEUEMAXSIZE`
-2. `ClearQueue()`: iterates `<= QUEUEMAXSIZE` should be `< QUEUEMAXSIZE`
-
-Both write one element past the end of `QueueCommands[QUEUEMAXSIZE]`. Fix before adding new functionality.
+### display-code/IrisDisplay/
+- `IrisDisplay.ino`: IRIS display sketch — prototype on Uno R4, target MCU is ESP32-S3 with PSRAM
 
 ### Integration Approach
 

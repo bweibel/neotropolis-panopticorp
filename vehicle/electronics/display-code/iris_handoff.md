@@ -20,7 +20,7 @@ The character's unsettling quality comes from the gap between the two — not fr
 
 - **Display:** Waveshare 2inch LCD Module, ST7789V controller, 240×320 resolution, SPI interface
 - **Host MCU (prototype):** Arduino Uno R4 WiFi
-- **Target MCU (event):** ESP32 (PSRAM variant preferred)
+- **Target MCU (event + permanent):** ESP32-S3 with PSRAM (dedicated board, car 12V powered)
 
 ---
 
