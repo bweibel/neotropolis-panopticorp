@@ -15,9 +15,9 @@ Two independent software systems sharing a one-way serial link.
 - Controls Pioneer head unit via X9C104 digital pot
 - Broadcasts serial events regardless of whether anything is listening
 
-**Removable lighting module** (two ESP32s, battery powered):
-- ESP32 Interior Hub: listens to Uno serial, controls interior strips, commands exterior node
-- ESP32 Exterior Node: receives ESP-NOW from hub, controls exterior strips and Pixelblaze
+**Removable lighting module** (battery powered):
+- QT Py RP2040 Interior Hub: listens to Uno serial, controls interior strips, sends scene index to exterior node via wired UART
+- ESP32-S3 Exterior Node: receives scene index via wired UART from hub, controls exterior strips and Pixelblaze
 
 ---
 
@@ -26,8 +26,8 @@ Two independent software systems sharing a one-way serial link.
 | Device | Role | Connection |
 |---|---|---|
 | Arduino Uno R4 WiFi | Head unit controller, input surface | Car 12V |
-| ESP32 #1 (no camera) | Interior lighting hub | Battery 18W USB-C |
-| ESP32 #2 (with camera) | Exterior lighting node | Battery 100W USB-C |
+| QT Py RP2040 (Adafruit 4900) | Interior lighting hub | Battery 18W USB-C |
+| ESP32-S3 (with camera) | Exterior lighting node | Battery 100W USB-C |
 | Pixelblaze V3 Standard | Top scanner + rear window strips | Battery (via exterior node power rail) |
 | LCD display | Mode and status display | Uno R4 |
 
@@ -112,25 +112,13 @@ This produces a subtle shimmer without strobing. Adjust percentages during testi
 
 ---
 
-## ESP-NOW Message Schema
+## Interior→Exterior Link
 
-### Transport
-
-- ESP-NOW between ESP32 Interior Hub and ESP32 Exterior Node
-- Interior Hub is sender, Exterior Node is receiver
-- Unicast (hub has exterior node MAC address hardcoded as constant)
-
-### Message Structure
-
-```cpp
-typedef struct SceneMessage {
-  uint8_t scene; // 0 = off, 1 = red, 2 = green
-} SceneMessage;
-```
-
-Sent on every scene change. No polling, no heartbeat for MVP.
-
-Exterior node applies the same scene definitions locally. No color data transmitted over the air.
+- Transport: Wired UART, one-way TX from RP2040 hub to ESP32 exterior node
+- Baud: 9600
+- Format: ASCII integer, newline terminated ("0\n", "1\n", "2\n")
+- Content: Scene index only
+- No handshake, no acknowledgment
 
 ---
 

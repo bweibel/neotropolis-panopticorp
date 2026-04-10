@@ -70,25 +70,28 @@ void advanceScene() {
 // Serial listener (Uno R4 → hub)
 // =============================================================================
 
-void handleEvent(const String& evt) {
-  if (evt == "SCENE_NEXT") {
+void handleEvent(const char* evt) {
+  if (strcmp(evt, "SCENE_NEXT") == 0) {
     advanceScene();
   }
   // VOL_UP, VOL_DOWN, MUTE, SKIP_FWD, SKIP_BACK: no action for MVP
   // Unknown events: silently ignored
-  Serial.println("EVT: " + evt);
+  Serial.print("EVT: "); Serial.println(evt);
 }
 
 void readSerial() {
-  static String buf = "";
+  static char buf[32];
+  static uint8_t bufIdx = 0;
   while (Serial1.available()) {
     char c = Serial1.read();
     if (c == '\n') {
-      buf.trim();
-      handleEvent(buf);
-      buf = "";
-    } else {
-      buf += c;
+      buf[bufIdx] = '\0';
+      if (bufIdx > 0) {
+        handleEvent(buf);
+      }
+      bufIdx = 0;
+    } else if (c != '\r' && bufIdx < sizeof(buf) - 1) {
+      buf[bufIdx++] = c;
     }
   }
 }

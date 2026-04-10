@@ -6,7 +6,6 @@
 // See: vehicle/electronics/baja-lighting-spec.md
 // =============================================================================
 
-#include <SoftwareSerial.h>
 #include "X9C.h"
 #include "pt.h"
 
@@ -23,9 +22,7 @@ const int BTN_3      = 7;   // Scene cycle (PURGE)
 const int BTN_4      = 8;   // Reserved (UPLINK)
 const int TOGGLE_LED = 9;   // T2: LED master power state
 
-// SoftwareSerial TX/RX pins (one-way TX to ESP32 hub; RX unused)
-const int SERIAL_TX  = 10;
-const int SERIAL_RX  = A0;  // unused (one-way TX only) but required by SoftwareSerial constructor
+const int PIN_SERIAL_TX = 1;  // Hardware Serial1 TX — Uno R4 pin 1
 
 // Digital pot (X9C104) pins
 const int PIN_POT_CS  = 13;
@@ -46,8 +43,6 @@ const char* EVT_SCENE_NEXT = "SCENE_NEXT\n";
 // =============================================================================
 // Serial link
 // =============================================================================
-
-SoftwareSerial espSerial(SERIAL_RX, SERIAL_TX);
 
 // =============================================================================
 // State
@@ -134,7 +129,7 @@ X9C pot;
 
 void setup()
 {
-  espSerial.begin(9600);
+  Serial1.begin(9600);
 
   PT_INIT(&pt1);
   PT_INIT(&pt2);
@@ -444,7 +439,7 @@ static int protothread3(struct pt *pt)
     // BTN_3: Scene cycle — serial only, no Pioneer command, suppressed when LED master off
     if (btn3 == LOW && lastBtn3 == HIGH) {
       if (ledMasterOn) {
-        espSerial.print(EVT_SCENE_NEXT);
+        Serial1.print(EVT_SCENE_NEXT);
         Serial.println("SCENE_NEXT");
       }
     }
@@ -471,35 +466,35 @@ void PulseVolumeUp()
 {
   QueueCommands[QueueIndex]=VOLUMEUP;
   IncreaseQueueIndex();
-  espSerial.print(EVT_VOL_UP);
+  Serial1.print(EVT_VOL_UP);
   Serial.println("PULSE-UP");
 }
 void PulseVolumeDown()
 {
   QueueCommands[QueueIndex]=VOLUMEDOWN;
   IncreaseQueueIndex();
-  espSerial.print(EVT_VOL_DOWN);
+  Serial1.print(EVT_VOL_DOWN);
   Serial.println("PULSE-DOWN");
 }
 void PulseTrackForward(void)
 {
   QueueCommands[QueueIndex]=TRACKFF;
   IncreaseQueueIndex();
-  espSerial.print(EVT_SKIP_FWD);
+  Serial1.print(EVT_SKIP_FWD);
   Serial.println("PULSE-FF");
 }
 void PulseTrackBack(void)
 {
   QueueCommands[QueueIndex]=TRACKPV;
   IncreaseQueueIndex();
-  espSerial.print(EVT_SKIP_BACK);
+  Serial1.print(EVT_SKIP_BACK);
   Serial.println("PULSE-PV");
 }
 void PulseMute(void)
 {
   QueueCommands[QueueIndex]=MUTE;
   IncreaseQueueIndex();
-  espSerial.print(EVT_MUTE);
+  Serial1.print(EVT_MUTE);
   Serial.println("PULSE-MUTE");
 }
 void PulseTripleClick(void)

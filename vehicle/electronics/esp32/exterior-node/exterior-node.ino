@@ -37,7 +37,7 @@ const int PIN_WHEEL_FL_B = 27;
 // Front right
 const int PIN_WHEEL_FR_R = 32;
 const int PIN_WHEEL_FR_G = 33;
-const int PIN_WHEEL_FR_B = 34;
+const int PIN_WHEEL_FR_B = 0;   // reassigned from 34 (input-only on ESP32); confirm pin is free before wiring wheel wells
 // Rear left
 const int PIN_WHEEL_RL_R = 18;
 const int PIN_WHEEL_RL_G = 19;
@@ -75,18 +75,21 @@ const unsigned long GLITTER_INTERVAL_MS = 30;  // ~33fps
 // =============================================================================
 
 void readSerial() {
-  static String buf = "";
+  static char buf[8];
+  static uint8_t bufIdx = 0;
   while (Serial2.available()) {
     char c = Serial2.read();
     if (c == '\n') {
-      buf.trim();
-      int scene = buf.toInt();
-      if (scene >= SCENE_OFF && scene <= SCENE_GREEN) {
-        currentScene = (uint8_t)scene;
+      buf[bufIdx] = '\0';
+      if (bufIdx > 0) {
+        int scene = atoi(buf);
+        if (scene >= SCENE_OFF && scene <= SCENE_GREEN) {
+          currentScene = (uint8_t)scene;
+        }
       }
-      buf = "";
-    } else {
-      buf += c;
+      bufIdx = 0;
+    } else if (c != '\r' && bufIdx < sizeof(buf) - 1) {
+      buf[bufIdx++] = c;
     }
   }
 }

@@ -1,4 +1,6 @@
 #pragma once
+// NOTE: This file is duplicated in interior-hub/ and exterior-node/.
+// If you change glitter parameters or colors, update BOTH copies.
 
 // =============================================================================
 // scenes.h — shared scene constants (exterior-node)
