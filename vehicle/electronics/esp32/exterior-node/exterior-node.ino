@@ -1,6 +1,6 @@
 // =============================================================================
-// exterior-node — ESP32 #2 (with camera)
-// Role: Receives scene changes from interior hub via ESP-NOW and controls
+// exterior-node — ESP32-S3 #2 (with camera)
+// Role: Receives scene changes from interior hub via wired UART and controls
 //       exterior lighting zones.
 //
 // Power: Battery USB-C 100W
@@ -8,8 +8,6 @@
 // =============================================================================
 
 #include <FastLED.h>
-#include <esp_now.h>
-#include <WiFi.h>
 #include "scenes.h"
 
 // =============================================================================
@@ -20,14 +18,18 @@
 const int PIN_SIDE_LEFT  = 13;
 const int PIN_SIDE_RIGHT = 14;
 
-// Hood scoop (WS2812B, <10 LEDs — join nearest side data line or own pin)
+// Hood scoop (WS2812B, ~8 LEDs)
 const int PIN_HOOD_SCOOP = 15;
 
 // Accent elements (WS2812B, ~8 LEDs each)
-const int PIN_ACCENT_1 = 16;
-const int PIN_ACCENT_2 = 17;
+const int PIN_ACCENT_1 = 4;
+const int PIN_ACCENT_2 = 2;
 
-// Wheel well static RGB strips (MOSFET PWM — stretch goal)
+// Serial from interior hub (RP2040)
+const int PIN_HUB_RX = 16;  // wired to RP2040 PIN_EXT_TX
+const int PIN_HUB_TX = 17;  // unused
+
+// Wheel well static RGB strips (MOSFET PWM — stub, active HIGH)
 // Front left
 const int PIN_WHEEL_FL_R = 25;
 const int PIN_WHEEL_FL_G = 26;
@@ -60,40 +62,94 @@ CRGB accent1[ACCENT_NUM_LEDS];
 CRGB accent2[ACCENT_NUM_LEDS];
 
 // =============================================================================
-// ESP-NOW — receive from interior hub
-// =============================================================================
-
-typedef struct SceneMessage {
-  uint8_t scene;  // 0 = off, 1 = red, 2 = green
-} SceneMessage;
-
-// =============================================================================
 // State
 // =============================================================================
 
-volatile uint8_t currentScene = SCENE_OFF;
+uint8_t currentScene = SCENE_OFF;
+
+unsigned long lastGlitterMs = 0;
+const unsigned long GLITTER_INTERVAL_MS = 30;  // ~33fps
 
 // =============================================================================
-// ESP-NOW receive callback
+// Serial listener — hub → exterior node
 // =============================================================================
 
-void onReceive(const esp_now_recv_info_t* info, const uint8_t* data, int len) {
-  if (len == sizeof(SceneMessage)) {
-    SceneMessage msg;
-    memcpy(&msg, data, sizeof(msg));
-    currentScene = msg.scene;
+void readSerial() {
+  static String buf = "";
+  while (Serial2.available()) {
+    char c = Serial2.read();
+    if (c == '\n') {
+      buf.trim();
+      int scene = buf.toInt();
+      if (scene >= SCENE_OFF && scene <= SCENE_GREEN) {
+        currentScene = (uint8_t)scene;
+      }
+      buf = "";
+    } else {
+      buf += c;
+    }
   }
 }
 
 // =============================================================================
-// TODO: implement
-//   - Glitter animation for all WS2812B zones when scene != SCENE_OFF (non-blocking)
-//   - MOSFET PWM output for wheel well static RGB strips (stretch goal)
-//   - Scene OFF: all strips off, all MOSFETs LOW
+// Glitter animation
+// =============================================================================
+
+void runGlitter(CRGB* strip, int numLeds, CRGB baseColor) {
+  CRGB base = baseColor;
+  base.nscale8(BASE_BRIGHTNESS);
+  fill_solid(strip, numLeds, base);
+
+  int glitterCount = max(1, (int)(numLeds * GLITTER_DENSITY));
+  for (int i = 0; i < glitterCount; i++) {
+    int idx = random16(numLeds);
+    uint8_t brightness = random8(GLITTER_MIN, GLITTER_MAX);
+    strip[idx] = baseColor;
+    strip[idx].nscale8(brightness);
+  }
+}
+
+// =============================================================================
+// Wheel well MOSFET PWM (stub — active HIGH)
+// =============================================================================
+
+void applySceneToWheelwells(uint8_t scene) {
+  // stub — implement when wheel wells are wired
+}
+
+// =============================================================================
+// Lighting update
+// =============================================================================
+
+void updateLighting() {
+  if (currentScene == SCENE_OFF) {
+    FastLED.clear();
+    FastLED.show();
+    applySceneToWheelwells(SCENE_OFF);
+    return;
+  }
+
+  unsigned long now = millis();
+  if (now - lastGlitterMs >= GLITTER_INTERVAL_MS) {
+    lastGlitterMs = now;
+    CRGB color = (currentScene == SCENE_RED) ? COLOR_RED : COLOR_GREEN;
+    runGlitter(sideLeft,  SIDE_NUM_LEDS,   color);
+    runGlitter(sideRight, SIDE_NUM_LEDS,   color);
+    runGlitter(hoodScoop, HOOD_NUM_LEDS,   color);
+    runGlitter(accent1,   ACCENT_NUM_LEDS, color);
+    runGlitter(accent2,   ACCENT_NUM_LEDS, color);
+    FastLED.show();
+    applySceneToWheelwells(currentScene);
+  }
+}
+
+// =============================================================================
+// Setup / loop
 // =============================================================================
 
 void setup() {
   Serial.begin(115200);
+  Serial2.begin(9600, SERIAL_8N1, PIN_HUB_RX, PIN_HUB_TX);
 
   // FastLED
   FastLED.addLeds<WS2812B, PIN_SIDE_LEFT,  GRB>(sideLeft,  SIDE_NUM_LEDS);
@@ -103,25 +159,15 @@ void setup() {
   FastLED.addLeds<WS2812B, PIN_ACCENT_2,   GRB>(accent2,   ACCENT_NUM_LEDS);
   FastLED.clear(true);
 
-  // Wheel well MOSFET pins (stretch goal)
+  // Wheel well MOSFET pins
   pinMode(PIN_WHEEL_FL_R, OUTPUT); pinMode(PIN_WHEEL_FL_G, OUTPUT); pinMode(PIN_WHEEL_FL_B, OUTPUT);
   pinMode(PIN_WHEEL_FR_R, OUTPUT); pinMode(PIN_WHEEL_FR_G, OUTPUT); pinMode(PIN_WHEEL_FR_B, OUTPUT);
   pinMode(PIN_WHEEL_RL_R, OUTPUT); pinMode(PIN_WHEEL_RL_G, OUTPUT); pinMode(PIN_WHEEL_RL_B, OUTPUT);
   pinMode(PIN_WHEEL_RR_R, OUTPUT); pinMode(PIN_WHEEL_RR_G, OUTPUT); pinMode(PIN_WHEEL_RR_B, OUTPUT);
-
-  // ESP-NOW
-  WiFi.mode(WIFI_STA);
-  Serial.print("Exterior node MAC: ");
-  Serial.println(WiFi.macAddress());
-  if (esp_now_init() != ESP_OK) {
-    Serial.println("ESP-NOW init failed");
-    return;
-  }
-  esp_now_register_recv_cb(onReceive);
+  applySceneToWheelwells(SCENE_OFF);
 }
 
 void loop() {
-  // TODO: run glitter animation on all WS2812B zones when currentScene != SCENE_OFF
-  // TODO: update wheel well MOSFET PWM to match current scene color (stretch)
-  // TODO: on SCENE_OFF, clear all strips and set all MOSFETs LOW
+  readSerial();
+  updateLighting();
 }
