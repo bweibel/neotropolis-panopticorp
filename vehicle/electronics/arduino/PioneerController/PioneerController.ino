@@ -87,7 +87,9 @@ static bool         HoldDownForMute               = true;      // this is just a
 static int          HowLongToHoldForMute          = 500;       // this probably should be more than the doubleclicktime (cause less confusion)
 
 // ProtoThreads
-static struct pt pt1, pt2;                                      // 2 threads, the encodes pt1 thread, and the writing of commands (the POT setter) pt2
+static struct pt pt1, pt2, pt3;
+
+int lastToggleState = HIGH;  // initialized in setup() from actual pin state — avoids spurious change on first loop
 
 // ProtoThread Queue
 #define               QUEUEMAXSIZE  200
@@ -134,6 +136,10 @@ void setup()
 {
   espSerial.begin(9600);
 
+  PT_INIT(&pt1);
+  PT_INIT(&pt2);
+  PT_INIT(&pt3);
+
   // setup encoder
   pinMode(ENC_CLK,    INPUT_PULLUP);
   pinMode(ENC_DT,     INPUT_PULLUP);
@@ -147,6 +153,7 @@ void setup()
   pinMode(TOGGLE_LED, INPUT_PULLUP);
 
   ledMasterOn = (digitalRead(TOGGLE_LED) == LOW);
+  lastToggleState = digitalRead(TOGGLE_LED);
 
   // setup POT
   pot.begin(PIN_POT_CS, PIN_POT_INC, PIN_POT_UD);
@@ -168,11 +175,7 @@ void loop()
 {
   protothread1(&pt1);
   protothread2(&pt2);
-
-  // TODO: read BTN_1, emit EVT_SKIP_FWD
-  // TODO: read BTN_2, emit EVT_SKIP_BACK
-  // TODO: read BTN_3, emit EVT_SCENE_NEXT (if ledMasterOn)
-  // TODO: poll TOGGLE_LED, update ledMasterOn, emit serial event
+  protothread3(&pt3);
 }
 
 // =============================================================================
@@ -408,6 +411,58 @@ static int protothread2(struct pt *pt)
   PT_END(pt);
 }
 
+static int protothread3(struct pt *pt)
+{
+  static unsigned long timestamp = 0;
+  static int lastBtn1 = HIGH;
+  static int lastBtn2 = HIGH;
+  static int lastBtn3 = HIGH;
+  // lastToggleState is a global set in setup() from the actual pin — avoids spurious change on first loop
+  // (a static local can't be initialized from a runtime value)
+
+  PT_BEGIN(pt);
+  while (1)
+  {
+    int btn1 = digitalRead(BTN_1);
+    int btn2 = digitalRead(BTN_2);
+    int btn3 = digitalRead(BTN_3);
+    int tog  = digitalRead(TOGGLE_LED);
+    int& lastToggle = lastToggleState;  // alias to global set in setup()
+
+    // BTN_1: Skip forward
+    if (btn1 == LOW && lastBtn1 == HIGH) {
+      PulseTrackForward();  // queues Pioneer command + emits EVT_SKIP_FWD
+    }
+    lastBtn1 = btn1;
+
+    // BTN_2: Skip back
+    if (btn2 == LOW && lastBtn2 == HIGH) {
+      PulseTrackBack();     // queues Pioneer command + emits EVT_SKIP_BACK
+    }
+    lastBtn2 = btn2;
+
+    // BTN_3: Scene cycle — serial only, no Pioneer command, suppressed when LED master off
+    if (btn3 == LOW && lastBtn3 == HIGH) {
+      if (ledMasterOn) {
+        espSerial.print(EVT_SCENE_NEXT);
+        Serial.println("SCENE_NEXT");
+      }
+    }
+    lastBtn3 = btn3;
+
+    // TOGGLE_LED: update ledMasterOn on change
+    if (tog != lastToggle) {
+      ledMasterOn = (tog == LOW);
+      Serial.print("LED master: ");
+      Serial.println(ledMasterOn ? "ON" : "OFF");
+    }
+    lastToggle = tog;
+
+    timestamp = millis(); PT_WAIT_UNTIL(pt, millis() - timestamp > DeBounceDelay);
+  }
+  PT_END(pt);
+}
+
 // =============================================================================
 // Pioneer command helpers
 // =============================================================================
@@ -416,30 +471,35 @@ void PulseVolumeUp()
 {
   QueueCommands[QueueIndex]=VOLUMEUP;
   IncreaseQueueIndex();
+  espSerial.print(EVT_VOL_UP);
   Serial.println("PULSE-UP");
 }
 void PulseVolumeDown()
 {
   QueueCommands[QueueIndex]=VOLUMEDOWN;
   IncreaseQueueIndex();
+  espSerial.print(EVT_VOL_DOWN);
   Serial.println("PULSE-DOWN");
 }
 void PulseTrackForward(void)
 {
   QueueCommands[QueueIndex]=TRACKFF;
   IncreaseQueueIndex();
+  espSerial.print(EVT_SKIP_FWD);
   Serial.println("PULSE-FF");
 }
 void PulseTrackBack(void)
 {
   QueueCommands[QueueIndex]=TRACKPV;
   IncreaseQueueIndex();
+  espSerial.print(EVT_SKIP_BACK);
   Serial.println("PULSE-PV");
 }
 void PulseMute(void)
 {
   QueueCommands[QueueIndex]=MUTE;
   IncreaseQueueIndex();
+  espSerial.print(EVT_MUTE);
   Serial.println("PULSE-MUTE");
 }
 void PulseTripleClick(void)
