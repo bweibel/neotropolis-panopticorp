@@ -1,33 +1,22 @@
-# RP2040 Interior Hub: Implementation Spec
+# ESP32-S3 Interior Hub: Implementation Spec
 
 ## Purpose
 
-Spec for implementing the full runtime of `interior-hub.ino`. The stub has pin constants, FastLED setup, MOSFET pin init, and a placeholder for ESP-NOW (now removed — see Architecture Change below).
+Spec for porting `interior-hub.ino` from the QT Py RP2040 to the **Hosyond ESP32-S3 N16R8**. The existing RP2040 implementation is the reference — logic is identical, only the Serial API and pin assignments change.
 
 ---
 
-## Architecture Change: RP2040 replaces ESP32
+## Architecture: ESP32-S3 N16R8 replaces QT Py RP2040
 
-The interior hub MCU is a **RP2040** (e.g. Raspberry Pi Pico), not an ESP32. Use the **arduino-pico** core (Earle Philhower). This affects:
+All three lighting/display boards are now **Hosyond ESP32-S3 N16R8** (16MB flash, 8MB PSRAM). Board target: `esp32:esp32:esp32s3`.
 
-- **ESP-NOW is gone.** RP2040 has no wireless. Scene index is sent to the exterior node over a **wired UART TX line** instead.
-- **Serial UARTs:** RP2040 has two hardware UARTs — `Serial1` and `Serial2` in arduino-pico. Use `Serial1` for Uno RX, `Serial2` for exterior node TX (or vice versa — assign consistently with pin constants).
-- **FastLED:** Fully supported on arduino-pico.
-- **`analogWrite()`:** Fully supported — RP2040 has hardware PWM on every GPIO.
-- **Pin 34 input-only concern from prior draft:** Not applicable — that's an ESP32 variant issue.
+Key differences from RP2040 implementation:
 
-### Remove from stub before implementing:
-- `#include <esp_now.h>`
-- `#include <WiFi.h>`
-- `SceneMessage` struct
-- `peerInfo` global
-- `sendSceneToExterior()` function
-- All ESP-NOW init in `setup()`
-- `EXTERIOR_NODE_MAC` constant
-
-### Add to stub:
-- `const int PIN_EXT_TX` — UART TX pin to exterior node (assign a free GPIO, define as constant)
-- `Serial2` for exterior node TX
+- **Serial API:** ESP32 uses `Serial1.begin(baud, config, rx_pin, tx_pin)` — no separate `setRX()`/`setTX()` calls needed. Pins passed directly to `begin()`.
+- **Serial2 for IRIS:** Hub now broadcasts scene to both exterior node (Serial2) and IRIS display (Serial1 or Serial2 — assign a third UART or share a TX line). ESP32-S3 has three hardware UARTs.
+- **`analogWrite()`:** Fully supported on ESP32-S3.
+- **FastLED:** Fully supported on ESP32-S3.
+- **Pin assignments:** QT Py RP2040 pin numbers (6, 3, 26, 5, 20, 4) are board-specific and must be reassigned to Hosyond ESP32-S3 GPIOs. TBD on receipt of hardware.
 
 ---
 
@@ -38,12 +27,10 @@ Receives one-way serial from Uno R4 at 9600 baud on `PIN_SERIAL_RX`.
 ### In `setup()`:
 
 ```cpp
-Serial1.setRX(PIN_SERIAL_RX);
-Serial1.setTX(PIN_SERIAL_TX);  // unused but set for completeness
-Serial1.begin(9600);
+Serial1.begin(9600, SERIAL_8N1, PIN_SERIAL_RX, PIN_SERIAL_TX);
 ```
 
-arduino-pico requires explicit `setRX`/`setTX` before `begin()` when using non-default pins.
+ESP32 passes RX/TX pins directly to `begin()` — no `setRX()`/`setTX()` needed.
 
 ### Parsing:
 
@@ -82,18 +69,23 @@ Call `readSerial()` at the top of `loop()` every iteration.
 
 ## Part 2: Scene management + exterior TX
 
-### Add pin constant to globals:
+### Add pin constants to globals:
 
 ```cpp
-const int PIN_EXT_TX = 4;  // assign a free GPIO — adjust to actual wiring
+const int PIN_EXT_TX   = /* TBD */;  // UART TX to exterior node
+const int PIN_IRIS_TX  = /* TBD */;  // UART TX to IRIS display
 ```
+
+Assign free GPIOs on receipt of hardware. Both are TX-only (one-way).
 
 ### In `setup()`:
 
 ```cpp
-Serial2.setTX(PIN_EXT_TX);
-Serial2.begin(9600);
+Serial2.begin(9600, SERIAL_8N1, -1, PIN_EXT_TX);   // exterior node
+Serial0.begin(9600, SERIAL_8N1, -1, PIN_IRIS_TX);  // IRIS display
 ```
+
+ESP32-S3 has three hardware UARTs (Serial, Serial1, Serial2). Use Serial1 for Uno RX, Serial2 for exterior node TX, and Serial0 (or reassign) for IRIS TX. Adjust if pin constraints require a different UART assignment.
 
 ### advanceScene():
 
@@ -101,20 +93,25 @@ Serial2.begin(9600);
 void advanceScene() {
   currentScene = (currentScene + 1) % 3;  // 0 → 1 → 2 → 0
   sendSceneToExterior(currentScene);
+  sendSceneToIris(currentScene);
   applySceneToFootwells(currentScene);
   Serial.print("Scene: "); Serial.println(currentScene);
 }
 ```
 
-### sendSceneToExterior() — replaces the ESP-NOW version:
+### sendSceneToExterior() and sendSceneToIris():
 
 ```cpp
 void sendSceneToExterior(uint8_t scene) {
   Serial2.println(scene);  // sends "0\n", "1\n", or "2\n"
 }
+
+void sendSceneToIris(uint8_t scene) {
+  Serial0.println(scene);  // same format — IRIS parses identically
+}
 ```
 
-Simple integer string, newline terminated. Exterior node parses the integer directly — no need for named event strings since scene index is unambiguous.
+Scene index as newline-terminated integer. Both receivers parse the same format.
 
 ---
 
@@ -210,25 +207,27 @@ void loop() {
 
 ---
 
-## Summary of changes to stub
+## Summary of changes for port
 
 | Location | Change |
 |---|---|
-| Includes | Remove `esp_now.h`, `WiFi.h` |
-| Globals | Remove `EXTERIOR_NODE_MAC`, `SceneMessage`, `peerInfo`; add `PIN_EXT_TX`, `lastGlitterMs`, `GLITTER_INTERVAL_MS` |
-| `setup()` | Replace ESP-NOW block with `Serial1` + `Serial2` init; add `applySceneToFootwells(SCENE_OFF)` |
-| `sendSceneToExterior()` | Replace ESP-NOW send with `Serial2.println(scene)` |
-| New functions | `readSerial()`, `handleEvent()`, `advanceScene()`, `runGlitter()`, `updateLighting()`, `applySceneToFootwells()` |
-| `loop()` | Replace TODOs with `readSerial()`, `updateLighting()` |
+| Board target | `rp2040:rp2040:adafruit_qtpy_rp2040` → `esp32:esp32:esp32s3` |
+| Serial init | `Serial1.setRX()/setTX()/begin()` → `Serial1.begin(baud, config, rx, tx)` |
+| Pin constants | QT Py GPIO numbers → Hosyond ESP32-S3 GPIOs (TBD on hardware receipt) |
+| `advanceScene()` | Add `sendSceneToIris()` call |
+| New globals | `PIN_IRIS_TX` |
+| New function | `sendSceneToIris()` |
+| `setup()` | Add IRIS serial init (`Serial0.begin(...)`) |
+
+Logic, animation, and footwell functions are unchanged.
 
 ---
 
 ## Open questions
 
-- [ ] **Footwell strip polarity** — common anode or common cathode? Determines whether PWM values are inverted.
-- [ ] **`PIN_EXT_TX` assignment** — pick a free GPIO consistent with physical wire routing, set as named constant.
-- [ ] **RP2040 variant** — confirm which board (Pico, Pico W, other). Select correct board in arduino-pico. Pico W has WiFi but it's not used here.
-- [ ] **arduino-pico core** — install via Arduino Board Manager: `https://github.com/earlephilhower/arduino-pico`
+- [ ] **Pin assignments** — all QT Py RP2040 pin numbers must be remapped to Hosyond ESP32-S3 GPIOs once hardware is in hand. Avoid strapping pins (0, 45, 46) and flash pins (26–32 on some variants — confirm datasheet).
+- [ ] **UART assignment** — confirm Serial/Serial1/Serial2/Serial0 mapping for three TX/RX lines (Uno RX, exterior TX, IRIS TX). ESP32-S3 has three hardware UARTs.
+- [ ] **Footwell strip polarity** — common anode or common cathode?
 
 ---
 

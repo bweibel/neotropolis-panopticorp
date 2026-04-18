@@ -16,12 +16,12 @@ Three independent software systems sharing one-way serial links.
 - Broadcasts serial events regardless of whether anything is listening
 
 **Removable lighting module** (battery powered):
-- QT Py RP2040 Interior Hub: listens to Uno serial, controls interior strips, sends scene index to exterior node and IRIS display via wired UART
-- ESP32-S3 Exterior Node: receives scene index via wired UART from hub, controls exterior strips and Pixelblaze
+- ESP32-S3 N16R8 Interior Hub: listens to Uno serial, controls interior strips, sends scene index to exterior node and IRIS display via wired UART
+- ESP32-S3 N16R8 Exterior Node: receives scene index via wired UART from hub, controls exterior strips and Pixelblaze
 
-**Permanent display module** (car 12V or dedicated supply):
-- ESP32-S3 with PSRAM — IRIS display character
-- Receives scene index via wired UART from RP2040 hub
+**Permanent display module** (car 12V):
+- ESP32-S3 N16R8 — IRIS display character
+- Receives scene index via wired UART from interior hub
 - Drives Waveshare 2" ST7789V LCD via hardware SPI
 - Handles all display animation independently
 
@@ -32,9 +32,9 @@ Three independent software systems sharing one-way serial links.
 | Device | Role | Connection |
 |---|---|---|
 | Arduino Uno R4 WiFi | Head unit controller, input surface | Car 12V |
-| QT Py RP2040 (Adafruit 4900) | Interior lighting hub | Battery 18W USB-C |
-| ESP32-S3 (with camera) | Exterior lighting node | Battery 100W USB-C |
-| ESP32-S3 with PSRAM | IRIS display character | Car 12V (permanent) |
+| ESP32-S3 N16R8 (Hosyond) | Interior lighting hub | Battery 18W USB-C |
+| ESP32-S3 N16R8 (Hosyond) | Exterior lighting node | Battery 100W USB-C |
+| ESP32-S3 N16R8 (Hosyond) | IRIS display character | Car 12V (permanent) |
 | Pixelblaze V3 Standard | Top scanner + rear window strips | Battery (via exterior node power rail) |
 
 ---
@@ -178,7 +178,7 @@ Pixelblaze is configured independently via its web UI. It does not receive seria
 ### Battery USB-C 18W (interior module)
 
 - USB-C PD trigger board (negotiates 5V)
-- QT Py RP2040 (interior hub)
+- ESP32-S3 N16R8 (interior hub)
 - Dashboard WS2812B strips via 5V rail
 - Floor footwell static strips via MOSFET PWM
 
