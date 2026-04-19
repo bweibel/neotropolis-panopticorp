@@ -2,104 +2,119 @@
 
 ## Scope
 
-Get the Waveshare 2" LCD (ST7789V, 240×320, SPI) up and running on the Arduino Uno R4 WiFi with a static test pattern. No animation, no serial integration, no mood states yet. Goal is confirmed display output before any further work.
-
----
-
-## Phase 1: Test pattern (current scope)
-
-A static image drawn once in `setup()`. Confirms wiring, SPI communication, and library are all working.
-
-**Test pattern contents:**
-- Black background
-- Filled circle centered on screen (stand-in for the IRIS lens)
-- A short text label ("IRIS" or "PANOPTICORP") in the primary color
-- A colored bar across the bottom (stand-in for the ticker zone)
-
-This is throwaway — just a smoke test. It will be replaced in Phase 2.
+Drive a GC9A01 1.28" round TFT (240×240) on a dedicated Hosyond ESP32-S3 N16R8. Display the IRIS surveillance AI character — an animated eye lens filling the circular canvas. No housing chrome, no status bar, no ticker zone; the round format IS the eye.
 
 ---
 
 ## Hardware
 
-- **Display:** Waveshare 2inch LCD Module, ST7789V controller, 240×320, SPI
-- **Prototype MCU:** Arduino Uno R4 WiFi (Phase 1 only)
-- **Target MCU (event + permanent):** ESP32-S3 with PSRAM
+- **Display:** 1.28" round TFT, GC9A01 controller, 240×240, SPI
+- **MCU:** Hosyond ESP32-S3 N16R8 (16MB flash, 8MB PSRAM)
+- **Power:** Car 12V permanent (same rail as Uno R4)
+- **Library:** TFT_eSPI (Bodmer) — configured via `User_Setup.h` alongside the sketch
 
-### Why ESP32-S3 with PSRAM for event hardware
-- Hardware SPI at 40–80MHz enables smooth animation (software SPI on Uno R4 is too slow for Phase 2+)
-- PSRAM provides headroom for framebuffers and animation state alongside display rendering
-- Dedicated MCU keeps display work isolated from lighting coordination
-- Powered from car 12V permanently (same as Uno R4)
-- Receives scene index via wired UART from RP2040 interior hub
+### Why TFT_eSPI
 
-### Phase 1 pin assignment (Uno R4 prototype — software SPI)
+- Hardware SPI at 40–80MHz on ESP32-S3 — smooth animation
+- GC9A01 driver built in
+- Adafruit GFX-compatible drawing primitives
+- PSRAM available for framebuffers as animation complexity grows
 
-The Uno R4 hardware SPI pins (SCK=13, MOSI=11) are occupied by the X9C104 pot. Use software SPI on free analog pins.
+### Pin assignment (ESP32-S3 — TBD on hardware arrival)
 
-| Display pin | Uno R4 pin | Notes |
+All pins defined as named constants. Avoid strapping pins (0, 45, 46) and flash pins (26–32 on some variants — confirm datasheet).
+
+| Signal | GPIO | Notes |
 |---|---|---|
-| SCK | A1 | Software SPI clock |
-| MOSI (SDA) | A2 | Software SPI data |
-| CS | A3 | Chip select |
-| DC | A4 | Data/command |
-| RST | A5 | Reset |
-| VCC | 3.3V | ST7789V is 3.3V logic |
+| MOSI (SDA) | TBD | Hardware SPI MOSI |
+| SCK (CLK) | TBD | Hardware SPI clock |
+| CS | TBD | Chip select |
+| DC | TBD | Data/command |
+| RST | TBD | Reset |
+| VCC | 3.3V | GC9A01 is 3.3V logic |
 | GND | GND | |
 
-### Phase 2+ pin assignment (ESP32-S3 target — hardware SPI)
+---
 
-Pin assignments TBD when ESP32-S3 board is selected. Use hardware SPI (VSPI or HSPI) — no pin conflicts on a dedicated board.
+## TFT_eSPI configuration
 
-All pins defined as named constants. No magic numbers.
+`User_Setup.h` lives in the same sketch folder. Point TFT_eSPI to it by defining `USER_SETUP_LOADED` or placing the file at the library root — see TFT_eSPI docs for local setup method.
+
+```cpp
+#define USER_SETUP_LOADED
+#define GC9A01_DRIVER
+#define TFT_WIDTH  240
+#define TFT_HEIGHT 240
+
+// Update with actual GPIO numbers once hardware is in hand:
+#define TFT_MOSI  /* GPIO TBD */
+#define TFT_SCLK  /* GPIO TBD */
+#define TFT_CS    /* GPIO TBD */
+#define TFT_DC    /* GPIO TBD */
+#define TFT_RST   /* GPIO TBD */
+
+#define SPI_FREQUENCY     40000000
+#define SPI_READ_FREQUENCY  20000000
+```
 
 ---
 
-## Library
+## Serial input
 
-Use **Adafruit ST7735 and ST7789 Library** + **Adafruit GFX Library**. Both available via Arduino Library Manager. Supports software SPI via constructor arguments.
+Receives scene index from Interior Hub via wired UART (shared Serial2 broadcast TX).
+
+- Baud: 9600
+- Format: ASCII integer + newline (`"0\n"`, `"1\n"`, `"2\n"`)
+- Same format as exterior node — both wired to the same TX pin on the hub
 
 ```cpp
-#include <Adafruit_GFX.h>
-#include <Adafruit_ST7789.h>
-```
+const int PIN_IRIS_RX = /* TBD */;  // UART RX from hub Serial2 TX
 
-Constructor for software SPI:
-```cpp
-Adafruit_ST7789 tft = Adafruit_ST7789(PIN_LCD_CS, PIN_LCD_DC, PIN_LCD_MOSI, PIN_LCD_SCK, PIN_LCD_RST);
+// In setup():
+Serial1.begin(9600, SERIAL_8N1, PIN_IRIS_RX, -1);  // RX only
 ```
 
 ---
 
-## Implementation
+## Phase roadmap
 
-### New file: `display-code/IrisDisplay/IrisDisplay.ino`
+| Phase | Scope | Notes |
+|---|---|---|
+| 1 | Static test pattern — confirms wiring and SPI | Current scope |
+| 2 | IRIS lens illustration — aperture blades, iris ring, glass arc | Static, drawn once |
+| 3 | Animated lens — eyelid, pupil position, aperture spread | Non-blocking, millis() |
+| 4 | Scene-driven color (cyan / red / green) via UART | Parses scene index |
+| 5 | Mood state transitions — squint, surprised, wide scan, glitch | Driven by scene + timing |
 
-Standalone sketch — not merged into `PioneerController.ino` at this stage. Develop and test independently, integrate later.
+---
+
+## Phase 1: Test pattern (current scope)
+
+Static image drawn once in `setup()`. Confirms wiring, SPI, and library before any animation work.
 
 ```cpp
-#include <Adafruit_GFX.h>
-#include <Adafruit_ST7789.h>
-
-// Pin constants
-const int PIN_LCD_SCK  = A1;
-const int PIN_LCD_MOSI = A2;
-const int PIN_LCD_CS   = A3;
-const int PIN_LCD_DC   = A4;
-const int PIN_LCD_RST  = A5;
+#include <TFT_eSPI.h>
 
 // Display dimensions
 const int LCD_W = 240;
-const int LCD_H = 320;
+const int LCD_H = 240;
+const int LCD_CX = LCD_W / 2;
+const int LCD_CY = LCD_H / 2;
 
-Adafruit_ST7789 tft = Adafruit_ST7789(PIN_LCD_CS, PIN_LCD_DC, PIN_LCD_MOSI, PIN_LCD_SCK, PIN_LCD_RST);
+// IRIS palette
+const uint16_t COLOR_IRIS_CYAN  = 0x07FF;  // cyan
+const uint16_t COLOR_BLACK      = 0x0000;
+const uint16_t COLOR_WHITE      = 0xFFFF;
+
+TFT_eSPI tft = TFT_eSPI();
 
 void setup() {
   Serial.begin(115200);
-  tft.init(LCD_W, LCD_H);
-  tft.setRotation(0);  // adjust if display orientation is wrong
+  tft.init();
+  tft.setRotation(0);
+  tft.fillScreen(COLOR_BLACK);
   drawTestPattern();
-  Serial.println("Display init complete");
+  Serial.println("IRIS display init complete");
 }
 
 void loop() {
@@ -107,38 +122,67 @@ void loop() {
 }
 
 void drawTestPattern() {
-  tft.fillScreen(ST77XX_BLACK);
+  // Lens fill — cyan circle nearly filling the round display
+  tft.fillCircle(LCD_CX, LCD_CY, 110, COLOR_IRIS_CYAN);
 
-  // Lens stand-in: cyan circle centered
-  tft.fillCircle(LCD_W / 2, LCD_H / 2, 80, 0x07FF);  // cyan
+  // Aperture ring — dark outline at edge
+  tft.drawCircle(LCD_CX, LCD_CY, 110, COLOR_BLACK);
+  tft.drawCircle(LCD_CX, LCD_CY, 109, COLOR_BLACK);
+
+  // Pupil — black center
+  tft.fillCircle(LCD_CX, LCD_CY, 30, COLOR_BLACK);
 
   // Label
-  tft.setTextColor(ST77XX_WHITE);
+  tft.setTextColor(COLOR_WHITE, COLOR_IRIS_CYAN);
   tft.setTextSize(2);
-  tft.setCursor(80, 20);
+  tft.setCursor(LCD_CX - 20, LCD_CY + 50);
   tft.print("IRIS");
-
-  // Ticker zone bar
-  tft.fillRect(0, LCD_H - 40, LCD_W, 40, 0x07FF);  // cyan bar
 }
 ```
 
 ---
 
-## Next phases (not current scope)
+## Visual identity (for Phase 2+)
 
-- **Phase 2:** Static IRIS housing illustration — approved visual design rendered as vector-style primitives (still on Uno R4)
-- **Phase 3:** Migrate to ESP32-S3 with PSRAM — hardware SPI, standalone sketch
-- **Phase 4:** Ticker scrolling text
-- **Phase 5:** Scene-driven color mode (cyan → red → green) via UART from RP2040 hub
-- **Phase 6:** Mood state transitions driven by scene/input events
+The IRIS lens fills the circular canvas. All expression is carried by the lens — there is no face.
+
+Expression variables:
+1. **Eyelid position** — dark plane sliding in from top or bottom
+2. **Pupil size and position** — centered/shifted, large/small
+3. **Iris ring brightness** — normal vs. heightened
+4. **Aperture blade spread** — closed/standard vs. retracted/open
+
+Color modes (driven by scene index):
+- **Cyan** (scene 0 / OFF): default, corporate/friendly
+- **Red** (scene 1 / RED): surveillance/patrol mode
+- **Green** (scene 2 / GREEN): sweep mode
+
+Mood states (Phase 5):
+| Mood | Read |
+|---|---|
+| Neutral | Baseline, passive |
+| Squint | Calculating |
+| Surprised | Input detected, iris snaps open |
+| Suspicious | Asymmetric, watching |
+| Wide scan | Active surveillance sweep |
+| Bleed/glitch | The other thing looking out |
 
 ---
 
 ## Verification
 
 - Display initializes without hanging `setup()`
-- Test pattern visible: black background, cyan circle, "IRIS" label, bottom bar
-- `Serial` prints "Display init complete"
-- If screen is blank/white: check VCC (must be 3.3V), confirm CS/DC/RST wiring
-- If garbled: try `tft.setRotation(1)` or check SCK/MOSI aren't swapped
+- Black background with cyan circle visible, "IRIS" label present
+- Aperture ring outline at circle edge
+- `Serial` prints "IRIS display init complete"
+- If screen blank/white: check VCC (must be 3.3V), confirm CS/DC/RST wiring
+- If garbled: try `tft.setRotation(1)`, check MOSI/SCK aren't swapped
+
+---
+
+## Open questions
+
+- [ ] Pin assignments — all TBD pending Hosyond ESP32-S3 hardware arrival
+- [ ] Confirm GC9A01 module VCC tolerance (most modules accept 3.3V–5V input with onboard regulator, but logic must be 3.3V)
+- [ ] Glitch state timing and trigger logic (Phase 5 workstream)
+- [ ] Full ticker token vocabulary if ticker is ever added back (currently cut for round format)

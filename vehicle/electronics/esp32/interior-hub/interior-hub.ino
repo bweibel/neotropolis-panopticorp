@@ -66,6 +66,13 @@ void advanceScene() {
   Serial.print("Scene: "); Serial.println(currentScene);
 }
 
+void retreatScene() {
+  currentScene = (currentScene + 2) % 3;  // -1 mod 3
+  sendSceneToExterior(currentScene);
+  applySceneToFootwells(currentScene);
+  Serial.print("Scene: "); Serial.println(currentScene);
+}
+
 // =============================================================================
 // Serial listener (Uno R4 → hub)
 // =============================================================================
@@ -73,6 +80,8 @@ void advanceScene() {
 void handleEvent(const char* evt) {
   if (strcmp(evt, "SCENE_NEXT") == 0) {
     advanceScene();
+  } else if (strcmp(evt, "SCENE_PREV") == 0) {
+    retreatScene();
   }
   // VOL_UP, VOL_DOWN, MUTE, SKIP_FWD, SKIP_BACK: no action for MVP
   // Unknown events: silently ignored

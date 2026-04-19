@@ -8,6 +8,7 @@
 
 #include "X9C.h"
 #include "pt.h"
+#include <LiquidCrystal.h>
 
 // =============================================================================
 // Pin constants
@@ -24,6 +25,14 @@ const int TOGGLE_LED = 9;   // T2: LED master power state
 
 const int PIN_SERIAL_TX = 1;  // Hardware Serial1 TX — Uno R4 pin 1
 
+// Character LCD (WH1602B-TMI-JT, 16×2, HD44780 parallel 4-bit)
+const int PIN_LCD_RS = 10;
+const int PIN_LCD_EN = A0;
+const int PIN_LCD_D4 = A1;
+const int PIN_LCD_D5 = A2;
+const int PIN_LCD_D6 = A3;
+const int PIN_LCD_D7 = A4;  // A4 is hardware I2C SDA — acceptable, no I2C devices used
+
 // Digital pot (X9C104) pins
 const int PIN_POT_CS  = 13;
 const int PIN_POT_UD  = 12;
@@ -39,10 +48,34 @@ const char* EVT_MUTE      = "MUTE\n";
 const char* EVT_SKIP_FWD  = "SKIP_FWD\n";
 const char* EVT_SKIP_BACK = "SKIP_BACK\n";
 const char* EVT_SCENE_NEXT = "SCENE_NEXT\n";
+const char* EVT_SCENE_PREV = "SCENE_PREV\n";
 
 // =============================================================================
-// Serial link
+// LCD
 // =============================================================================
+
+LiquidCrystal lcd(PIN_LCD_RS, PIN_LCD_EN, PIN_LCD_D4, PIN_LCD_D5, PIN_LCD_D6, PIN_LCD_D7);
+
+enum LcdState { LCD_BOOT, LCD_IDLE, LCD_SCENE, LCD_VOLUME, LCD_TRACK };
+
+LcdState      lcdState       = LCD_BOOT;
+unsigned long lcdStateMs     = 0;
+uint8_t       idleIndex      = 0;
+uint8_t       currentLcdScene = 0;  // mirrors hub scene state (0/1/2)
+int           lcdVolLevel    = 8;   // relative vol indicator, 0–16, starts mid
+
+const unsigned long LCD_BOOT_MS  = 1500;
+const unsigned long LCD_EVENT_MS = 2000;
+const unsigned long LCD_IDLE_MS  = 8000;
+
+const char* IDLE_ROW0[] = {
+  "PANOPTICORP RSU ", "MONITORING ZONE ", "SCAN MODE: AUTO ",
+  "ACCESS GRANTED  ", "UPLINK: NOMINAL "
+};
+const char* IDLE_ROW1[] = {
+  "ALL ZONES CLEAR ", "ACTIVITY: NORMAL", "7 ZONES ACTIVE  ",
+  "CLEARANCE: LVL3 ", "AWAITING INPUT  "
+};
 
 // =============================================================================
 // State
@@ -163,7 +196,11 @@ void setup()
   Serial.begin(115200);
   Serial.println("Started");
 
-  // TODO: initialize LCD
+  lcd.begin(16, 2);
+  lcd.setCursor(0, 0); lcd.print("PANOPTICORP RSU ");
+  lcd.setCursor(0, 1); lcd.print("UNIT 7 ONLINE   ");
+  lcdState   = LCD_BOOT;
+  lcdStateMs = millis();
 }
 
 void loop()
@@ -171,6 +208,7 @@ void loop()
   protothread1(&pt1);
   protothread2(&pt2);
   protothread3(&pt3);
+  updateLcd();
 }
 
 // =============================================================================
@@ -185,76 +223,28 @@ static int protothread1(struct pt *pt)
   static unsigned long LastTimeDirection    = 0;
   static int           LastDirection        = 0;
 
-  static unsigned long PrevLongHoldTime     = 0;
-  static unsigned long StillHoldingDown     = 0;
   PT_BEGIN(pt);
   while(1)
   {
-      // get encode info
+      // get encoder turn
       change              = getEncoderTurn();
       PreviousEncoderVal  = EncoderValue;
       EncoderValue        = EncoderValue+change;
 
-      // see if they clicked, and if they did, and the time has expired, then track forward
-      if (PreviousMills != 0 && millis()-PreviousMills>DoubleClickTime)
-      {
-          // you have to see if you are holding down just in case because you dont want to track AND mute
-          if (HoldDownForMute && PrevLongHoldTime)
-          {
-            Serial.println("You are still holding down, dont track forward until you let go");
-          }
-          else
-         {
-            PreviousMills =0;
-            PulseTrackForward();
-         }
-      }
-
-
-      // reset if you push the button, that will probably change to track forward, and 2 is track back
+      // encoder press: single-click = mute
       if(digitalRead(ENC_SW) == LOW)
       {
-        // this is the handler for Muting now
-        if (HoldDownForMute)
-       {
-          if (PrevLongHoldTime && millis()-PrevLongHoldTime > HowLongToHoldForMute && !StillHoldingDown)
-          {
-              StillHoldingDown = millis();
-              Serial.println("You have held down long enough");
-              ClearQueue();
-              PulseMute();
-              //timestamp = millis(); PT_WAIT_UNTIL(pt, millis() - timestamp > WaitForUnitToComplete);                        // allow other thread some time
-              Serial.println("DONE FORCE MUTE");
-              PreviousMills=0; // this is here to make sure that the next command isnt a TrackForward
-          }
-          if (PrevLongHoldTime == 0)
-            PrevLongHoldTime = millis();
-       }
-
         if (PreviousPush==0)
         {
-           CurrentMills = millis();
-           if (PreviousMills==0)
-           {
-             PreviousMills = CurrentMills;
-           }
-           else if (CurrentMills-PreviousMills<DoubleClickTime)
-           {
-                PreviousMills =0;
-                PulseTrackBack();
-           }
-           PreviousPush = 1;
+          ClearQueue();
+          PulseMute();
+          PreviousPush = 1;
         }
         timestamp = millis(); PT_WAIT_UNTIL(pt, millis() - timestamp > DeBounceDelay);
       }
       else
       {
           PreviousPush = 0;
-          if (HoldDownForMute)
-          {
-              PrevLongHoldTime = 0;
-              StillHoldingDown = 0;
-          }
       }
 
 
@@ -408,50 +398,68 @@ static int protothread2(struct pt *pt)
 
 static int protothread3(struct pt *pt)
 {
+  // All locals must be static — Protothreads switch/case cannot jump across initializations
   static unsigned long timestamp = 0;
   static int lastBtn1 = HIGH;
   static int lastBtn2 = HIGH;
   static int lastBtn3 = HIGH;
-  // lastToggleState is a global set in setup() from the actual pin — avoids spurious change on first loop
-  // (a static local can't be initialized from a runtime value)
+  static int lastBtn4 = HIGH;
+  static int btn1 = HIGH;
+  static int btn2 = HIGH;
+  static int btn3 = HIGH;
+  static int btn4 = HIGH;
+  static int tog  = HIGH;
 
   PT_BEGIN(pt);
   while (1)
   {
-    int btn1 = digitalRead(BTN_1);
-    int btn2 = digitalRead(BTN_2);
-    int btn3 = digitalRead(BTN_3);
-    int tog  = digitalRead(TOGGLE_LED);
-    int& lastToggle = lastToggleState;  // alias to global set in setup()
+    btn1 = digitalRead(BTN_1);
+    btn2 = digitalRead(BTN_2);
+    btn3 = digitalRead(BTN_3);
+    btn4 = digitalRead(BTN_4);
+    tog  = digitalRead(TOGGLE_LED);
 
-    // BTN_1: Skip forward
+    // BTN_1: Skip back
     if (btn1 == LOW && lastBtn1 == HIGH) {
-      PulseTrackForward();  // queues Pioneer command + emits EVT_SKIP_FWD
+      PulseTrackBack();
     }
     lastBtn1 = btn1;
 
-    // BTN_2: Skip back
+    // BTN_2: Skip forward
     if (btn2 == LOW && lastBtn2 == HIGH) {
-      PulseTrackBack();     // queues Pioneer command + emits EVT_SKIP_BACK
+      PulseTrackForward();
     }
     lastBtn2 = btn2;
 
-    // BTN_3: Scene cycle — serial only, no Pioneer command, suppressed when LED master off
+    // BTN_3: Scene cycle forward — serial only, suppressed when LED master off
     if (btn3 == LOW && lastBtn3 == HIGH) {
       if (ledMasterOn) {
         Serial1.print(EVT_SCENE_NEXT);
         Serial.println("SCENE_NEXT");
+        currentLcdScene = (currentLcdScene + 1) % 3;
+        showSceneMessage(currentLcdScene);
       }
     }
     lastBtn3 = btn3;
 
+    // BTN_4: Scene cycle backward — serial only, suppressed when LED master off
+    if (btn4 == LOW && lastBtn4 == HIGH) {
+      if (ledMasterOn) {
+        Serial1.print(EVT_SCENE_PREV);
+        Serial.println("SCENE_PREV");
+        currentLcdScene = (currentLcdScene + 2) % 3;
+        showSceneMessage(currentLcdScene);
+      }
+    }
+    lastBtn4 = btn4;
+
     // TOGGLE_LED: update ledMasterOn on change
-    if (tog != lastToggle) {
+    if (tog != lastToggleState) {
       ledMasterOn = (tog == LOW);
       Serial.print("LED master: ");
       Serial.println(ledMasterOn ? "ON" : "OFF");
     }
-    lastToggle = tog;
+    lastToggleState = tog;
 
     timestamp = millis(); PT_WAIT_UNTIL(pt, millis() - timestamp > DeBounceDelay);
   }
@@ -468,6 +476,8 @@ void PulseVolumeUp()
   IncreaseQueueIndex();
   Serial1.print(EVT_VOL_UP);
   Serial.println("PULSE-UP");
+  if (lcdVolLevel < 16) lcdVolLevel++;
+  showVolumeMessage();
 }
 void PulseVolumeDown()
 {
@@ -475,6 +485,8 @@ void PulseVolumeDown()
   IncreaseQueueIndex();
   Serial1.print(EVT_VOL_DOWN);
   Serial.println("PULSE-DOWN");
+  if (lcdVolLevel > 0) lcdVolLevel--;
+  showVolumeMessage();
 }
 void PulseTrackForward(void)
 {
@@ -482,6 +494,7 @@ void PulseTrackForward(void)
   IncreaseQueueIndex();
   Serial1.print(EVT_SKIP_FWD);
   Serial.println("PULSE-FF");
+  showTrackMessage(true);
 }
 void PulseTrackBack(void)
 {
@@ -489,6 +502,7 @@ void PulseTrackBack(void)
   IncreaseQueueIndex();
   Serial1.print(EVT_SKIP_BACK);
   Serial.println("PULSE-PV");
+  showTrackMessage(false);
 }
 void PulseMute(void)
 {
@@ -522,6 +536,75 @@ int getEncoderTurn(void)
   oldA=newA;
   oldB=newB;
   return result*-1;
+}
+
+// =============================================================================
+// LCD state machine
+// =============================================================================
+
+void updateLcd() {
+  unsigned long now = millis();
+
+  if (lcdState == LCD_BOOT && now - lcdStateMs >= LCD_BOOT_MS) {
+    lcdState   = LCD_IDLE;
+    lcdStateMs = now;
+    idleIndex  = 0;
+    showIdleMessage(0);
+    return;
+  }
+
+  if (lcdState == LCD_IDLE && now - lcdStateMs >= LCD_IDLE_MS) {
+    lcdStateMs = now;
+    idleIndex  = (idleIndex + 1) % 5;
+    showIdleMessage(idleIndex);
+    return;
+  }
+
+  if ((lcdState == LCD_SCENE || lcdState == LCD_VOLUME || lcdState == LCD_TRACK) &&
+      now - lcdStateMs >= LCD_EVENT_MS) {
+    lcdState   = LCD_IDLE;
+    lcdStateMs = now;
+    showIdleMessage(idleIndex);
+  }
+}
+
+void showIdleMessage(uint8_t idx) {
+  lcd.setCursor(0, 0); lcd.print(IDLE_ROW0[idx]);
+  lcd.setCursor(0, 1); lcd.print(IDLE_ROW1[idx]);
+}
+
+void showSceneMessage(uint8_t scene) {
+  lcd.setCursor(0, 0);
+  switch (scene) {
+    case 0: lcd.print("PANOPTICORP RSU "); break;
+    case 1: lcd.print("SCENE: PATROL   "); break;
+    case 2: lcd.print("SCENE: SWEEP    "); break;
+  }
+  lcd.setCursor(0, 1);
+  switch (scene) {
+    case 0: lcd.print("STANDBY MODE    "); break;
+    case 1: lcd.print("RED ACTIVE      "); break;
+    case 2: lcd.print("GREEN ACTIVE    "); break;
+  }
+  lcdState   = LCD_SCENE;
+  lcdStateMs = millis();
+}
+
+void showTrackMessage(bool forward) {
+  lcd.setCursor(0, 0); lcd.print(forward ? "SKIP FORWARD    " : "SKIP BACK       ");
+  lcd.setCursor(0, 1); lcd.print(forward ? "TRACK >        " : "TRACK <        ");
+  lcdState   = LCD_TRACK;
+  lcdStateMs = millis();
+}
+
+void showVolumeMessage() {
+  lcd.setCursor(0, 0); lcd.print("VOLUME          ");
+  lcd.setCursor(0, 1);
+  for (int i = 0; i < 16; i++) {
+    lcd.write(i < lcdVolLevel ? (uint8_t)0xFF : (uint8_t)0x20);
+  }
+  lcdState   = LCD_VOLUME;
+  lcdStateMs = millis();
 }
 
 // =============================================================================

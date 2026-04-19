@@ -1,47 +1,87 @@
-#include <Adafruit_GFX.h>
-#include <Adafruit_ST7789.h>
+// =============================================================================
+// IrisDisplay — ESP32-S3 N16R8
+// Role: Drives GC9A01 1.28" round TFT (240×240) with IRIS surveillance AI
+//       character. Receives scene index via wired UART from Interior Hub.
+//
+// Phase 1: Static test pattern — confirms wiring and SPI before animation work.
+// Library: TFT_eSPI (Bodmer). Configure via User_Setup.h in this sketch folder.
+//
+// See: vehicle/electronics/display-code/iris-display-spec.md
+// =============================================================================
 
-// Pin constants — software SPI (hardware SPI pins occupied by X9C104 pot)
-const int PIN_LCD_SCK  = A1;
-const int PIN_LCD_MOSI = A2;
-const int PIN_LCD_CS   = A3;
-const int PIN_LCD_DC   = A4;
-const int PIN_LCD_RST  = A5;
+#include <TFT_eSPI.h>
 
+// =============================================================================
+// Pin constants — update with actual GPIOs once hardware is in hand
+// Avoid strapping pins (0, 45, 46) and flash pins (26–32 on some variants)
+// =============================================================================
+
+const int PIN_IRIS_RX = /* TBD */ -1;  // UART RX from Interior Hub Serial2 TX
+
+// =============================================================================
 // Display dimensions
-const int LCD_W = 240;
-const int LCD_H = 320;
+// =============================================================================
 
-// Accent color — cyan (RGB565)
-const uint16_t COLOR_ACCENT = 0x07FF;
+const int LCD_W  = 240;
+const int LCD_H  = 240;
+const int LCD_CX = LCD_W / 2;
+const int LCD_CY = LCD_H / 2;
 
-Adafruit_ST7789 tft = Adafruit_ST7789(PIN_LCD_CS, PIN_LCD_DC, PIN_LCD_MOSI, PIN_LCD_SCK, PIN_LCD_RST);
+// =============================================================================
+// IRIS palette (RGB565)
+// =============================================================================
+
+const uint16_t COLOR_BLACK     = 0x0000;
+const uint16_t COLOR_WHITE     = 0xFFFF;
+const uint16_t COLOR_IRIS_CYAN = 0x07FF;
+
+// =============================================================================
+// TFT instance — pins configured via User_Setup.h
+// =============================================================================
+
+TFT_eSPI tft = TFT_eSPI();
+
+// =============================================================================
+// setup / loop
+// =============================================================================
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("Init starting...");
-  tft.init(LCD_W, LCD_H);
-  tft.setRotation(0);  // adjust if display orientation is wrong
+
+  // Serial1: UART RX from Interior Hub (scene index broadcasts)
+  // PIN_IRIS_RX will be assigned once hardware is in hand
+  // Serial1.begin(9600, SERIAL_8N1, PIN_IRIS_RX, -1);
+
+  tft.init();
+  tft.setRotation(0);
+  tft.fillScreen(COLOR_BLACK);
   drawTestPattern();
-  Serial.println("Display init complete");
+
+  Serial.println("IRIS display init complete");
 }
 
 void loop() {
-  // nothing — static display
+  // Phase 1: nothing — static display
 }
 
+// =============================================================================
+// Test pattern (Phase 1)
+// =============================================================================
+
 void drawTestPattern() {
-  tft.fillScreen(ST77XX_BLACK);
+  // Lens — cyan fill nearly filling the round display
+  tft.fillCircle(LCD_CX, LCD_CY, 110, COLOR_IRIS_CYAN);
 
-  // Lens stand-in: accent circle centered
-  tft.fillCircle(LCD_W / 2, LCD_H / 2, 80, COLOR_ACCENT);
+  // Aperture ring — dark outline at edge (stand-in for blade geometry)
+  tft.drawCircle(LCD_CX, LCD_CY, 110, COLOR_BLACK);
+  tft.drawCircle(LCD_CX, LCD_CY, 109, COLOR_BLACK);
 
-  // Label — centered at top (4 chars × 12px wide at size 2 = 48px; x = (240-48)/2 = 96)
-  tft.setTextColor(ST77XX_WHITE);
+  // Pupil — black center
+  tft.fillCircle(LCD_CX, LCD_CY, 30, COLOR_BLACK);
+
+  // Label
+  tft.setTextColor(COLOR_WHITE, COLOR_IRIS_CYAN);
   tft.setTextSize(2);
-  tft.setCursor(96, 20);
+  tft.setCursor(LCD_CX - 20, LCD_CY + 50);
   tft.print("IRIS");
-
-  // Ticker zone bar
-  tft.fillRect(0, LCD_H - 40, LCD_W, 40, COLOR_ACCENT);
 }

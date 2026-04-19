@@ -13,7 +13,7 @@ All three lighting/display boards are now **Hosyond ESP32-S3 N16R8** (16MB flash
 Key differences from RP2040 implementation:
 
 - **Serial API:** ESP32 uses `Serial1.begin(baud, config, rx_pin, tx_pin)` — no separate `setRX()`/`setTX()` calls needed. Pins passed directly to `begin()`.
-- **Serial2 for IRIS:** Hub now broadcasts scene to both exterior node (Serial2) and IRIS display (Serial1 or Serial2 — assign a third UART or share a TX line). ESP32-S3 has three hardware UARTs.
+- **Serial2 shared TX:** Hub broadcasts scene index to both exterior node and IRIS display on a single Serial2 TX line. Both receivers are wired to the same TX pin and parse identical format — no third UART needed.
 - **`analogWrite()`:** Fully supported on ESP32-S3.
 - **FastLED:** Fully supported on ESP32-S3.
 - **Pin assignments:** QT Py RP2040 pin numbers (6, 3, 26, 5, 20, 4) are board-specific and must be reassigned to Hosyond ESP32-S3 GPIOs. TBD on receipt of hardware.
@@ -53,13 +53,15 @@ void readSerial() {
 ### Event handler:
 
 ```cpp
-void handleEvent(const String& evt) {
-  if (evt == "SCENE_NEXT") {
+void handleEvent(const char* evt) {
+  if (strcmp(evt, "SCENE_NEXT") == 0) {
     advanceScene();
+  } else if (strcmp(evt, "SCENE_PREV") == 0) {
+    retreatScene();
   }
   // VOL_UP, VOL_DOWN, MUTE, SKIP_FWD, SKIP_BACK: no action for MVP
   // Unknown events: silently ignored
-  Serial.println("EVT: " + evt);  // debug via USB Serial
+  Serial.print("EVT: "); Serial.println(evt);  // debug via USB Serial
 }
 ```
 
@@ -72,46 +74,55 @@ Call `readSerial()` at the top of `loop()` every iteration.
 ### Add pin constants to globals:
 
 ```cpp
-const int PIN_EXT_TX   = /* TBD */;  // UART TX to exterior node
-const int PIN_IRIS_TX  = /* TBD */;  // UART TX to IRIS display
+const int PIN_BROADCAST_TX = /* TBD */;  // Serial2 TX → exterior node RX + IRIS RX (shared line)
 ```
 
-Assign free GPIOs on receipt of hardware. Both are TX-only (one-way).
+One TX pin wired to two receiver RX pins. Both receive identical scene index integers at 9600 baud — electrically valid over short car-interior runs.
+
+### UART assignment:
+
+| UART | Role | Direction |
+|---|---|---|
+| Serial | USB CDC | Debug output only |
+| Serial1 | Uno R4 → Hub | RX only |
+| Serial2 | Hub → Exterior Node + IRIS | TX only (shared) |
 
 ### In `setup()`:
 
 ```cpp
-Serial2.begin(9600, SERIAL_8N1, -1, PIN_EXT_TX);   // exterior node
-Serial0.begin(9600, SERIAL_8N1, -1, PIN_IRIS_TX);  // IRIS display
+Serial1.begin(9600, SERIAL_8N1, PIN_SERIAL_RX, -1);      // Uno RX
+Serial2.begin(9600, SERIAL_8N1, -1, PIN_BROADCAST_TX);   // broadcast TX
 ```
 
-ESP32-S3 has three hardware UARTs (Serial, Serial1, Serial2). Use Serial1 for Uno RX, Serial2 for exterior node TX, and Serial0 (or reassign) for IRIS TX. Adjust if pin constraints require a different UART assignment.
-
-### advanceScene():
+### advanceScene() and retreatScene():
 
 ```cpp
 void advanceScene() {
   currentScene = (currentScene + 1) % 3;  // 0 → 1 → 2 → 0
-  sendSceneToExterior(currentScene);
-  sendSceneToIris(currentScene);
+  broadcastScene(currentScene);
   applySceneToFootwells(currentScene);
   Serial.print("Scene: "); Serial.println(currentScene);
 }
 ```
 
-### sendSceneToExterior() and sendSceneToIris():
-
 ```cpp
-void sendSceneToExterior(uint8_t scene) {
-  Serial2.println(scene);  // sends "0\n", "1\n", or "2\n"
-}
-
-void sendSceneToIris(uint8_t scene) {
-  Serial0.println(scene);  // same format — IRIS parses identically
+void retreatScene() {
+  currentScene = (currentScene + 2) % 3;  // -1 mod 3: 0 → 2 → 1 → 0
+  broadcastScene(currentScene);
+  applySceneToFootwells(currentScene);
+  Serial.print("Scene: "); Serial.println(currentScene);
 }
 ```
 
-Scene index as newline-terminated integer. Both receivers parse the same format.
+### broadcastScene():
+
+```cpp
+void broadcastScene(uint8_t scene) {
+  Serial2.println(scene);  // sends "0\n", "1\n", or "2\n" to exterior node + IRIS simultaneously
+}
+```
+
+Single TX line reaches both exterior node and IRIS display. Both parse the same format.
 
 ---
 
@@ -214,10 +225,10 @@ void loop() {
 | Board target | `rp2040:rp2040:adafruit_qtpy_rp2040` → `esp32:esp32:esp32s3` |
 | Serial init | `Serial1.setRX()/setTX()/begin()` → `Serial1.begin(baud, config, rx, tx)` |
 | Pin constants | QT Py GPIO numbers → Hosyond ESP32-S3 GPIOs (TBD on hardware receipt) |
-| `advanceScene()` | Add `sendSceneToIris()` call |
-| New globals | `PIN_IRIS_TX` |
-| New function | `sendSceneToIris()` |
-| `setup()` | Add IRIS serial init (`Serial0.begin(...)`) |
+| `advanceScene()` | Replace `sendSceneToExterior()` + `sendSceneToIris()` with `broadcastScene()` |
+| New globals | `PIN_BROADCAST_TX` (replaces `PIN_EXT_TX`, covers both receivers) |
+| New function | `broadcastScene()` — single Serial2 TX to exterior node + IRIS |
+| `setup()` | `Serial2.begin(9600, SERIAL_8N1, -1, PIN_BROADCAST_TX)` |
 
 Logic, animation, and footwell functions are unchanged.
 
@@ -226,15 +237,15 @@ Logic, animation, and footwell functions are unchanged.
 ## Open questions
 
 - [ ] **Pin assignments** — all QT Py RP2040 pin numbers must be remapped to Hosyond ESP32-S3 GPIOs once hardware is in hand. Avoid strapping pins (0, 45, 46) and flash pins (26–32 on some variants — confirm datasheet).
-- [ ] **UART assignment** — confirm Serial/Serial1/Serial2/Serial0 mapping for three TX/RX lines (Uno RX, exterior TX, IRIS TX). ESP32-S3 has three hardware UARTs.
+- [ ] **UART assignment** — confirmed: Serial=debug, Serial1=Uno RX, Serial2=broadcast TX (shared to exterior node + IRIS). No third UART needed.
 - [ ] **Footwell strip polarity** — common anode or common cathode?
 
 ---
 
 ## Verification
 
-- Boot: all lights off, footwells off, `Serial2` sending scene 0 to exterior
-- `SCENE_NEXT` received on `Serial1`: scene advances, footwells update, exterior receives integer over `Serial2`
+- Boot: all lights off, footwells off, `Serial2` broadcasting scene 0 to exterior node + IRIS
+- `SCENE_NEXT` received on `Serial1`: scene advances, footwells update, both exterior node and IRIS receive integer over shared `Serial2` TX
 - Scene RED: dashboard glitters red, footwells solid red
 - Scene GREEN: dashboard glitters green, footwells solid green
 - Scene OFF: strips clear, footwells off

@@ -21,9 +21,11 @@ Three independent software systems sharing one-way serial links.
 
 **Permanent display module** (car 12V):
 - ESP32-S3 N16R8 — IRIS display character
-- Receives scene index via wired UART from interior hub
-- Drives Waveshare 2" ST7789V LCD via hardware SPI
+- Receives scene index via wired UART from interior hub (shared Serial2 TX)
+- Drives 1.28" round GC9A01 TFT (240×240) via hardware SPI — animated eye lens
 - Handles all display animation independently
+- WH1602B-TMI-JT 16×2 character LCD — driven by Uno R4 directly
+- Shows scene name, volume level, boot messages, and Panopticorp flavor text
 
 ---
 
@@ -35,6 +37,7 @@ Three independent software systems sharing one-way serial links.
 | ESP32-S3 N16R8 (Hosyond) | Interior lighting hub | Battery 18W USB-C |
 | ESP32-S3 N16R8 (Hosyond) | Exterior lighting node | Battery 100W USB-C |
 | ESP32-S3 N16R8 (Hosyond) | IRIS display character | Car 12V (permanent) |
+| WH1602B-TMI-JT 16×2 LCD | Status + flavor text display | Uno R4 (permanent, 5V) |
 | Pixelblaze V3 Standard | Top scanner + rear window strips | Battery (via exterior node power rail) |
 
 ---
@@ -56,11 +59,11 @@ Toggle T2 is read by the Uno on boot and on change. When OFF, Uno suppresses SCE
 |---|---|---|
 | Rotary encoder CLK | ENC_CLK | Volume up/down |
 | Rotary encoder DT | ENC_DT | Volume direction |
-| Rotary encoder SW | ENC_SW | Mute toggle |
-| Button 1 | BTN_1 | Skip forward |
-| Button 2 | BTN_2 | Skip back |
-| Button 3 | BTN_3 | Scene cycle |
-| Button 4 (optional) | BTN_4 | Reserved / future use |
+| Rotary encoder SW | ENC_SW | Mute toggle (single press) |
+| Button 1 | BTN_1 | Skip back |
+| Button 2 | BTN_2 | Skip forward |
+| Button 3 | BTN_3 | Scene cycle forward |
+| Button 4 | BTN_4 | Scene cycle backward |
 | Toggle T2 | TOGGLE_LED | LED master power state |
 
 All pins defined as named constants at top of sketch. No magic numbers.
@@ -89,6 +92,7 @@ Button keycap labels (Panopticorp theme): SCAN, SWEEP, PURGE, UPLINK (or equival
 | `SKIP_FWD` | Button 1 press | No |
 | `SKIP_BACK` | Button 2 press | No |
 | `SCENE_NEXT` | Button 3 press | Yes |
+| `SCENE_PREV` | Button 4 press | Yes |
 
 Future events can be added without breaking existing receivers (ESP32 ignores unknown strings).
 
@@ -162,7 +166,8 @@ Pixelblaze is configured independently via its web UI. It does not receive seria
 ### Car 12V (ignition-switched)
 
 - Arduino Uno R4 WiFi
-- LCD display
+- WH1602B-TMI-JT 16×2 character LCD (5V from Uno R4)
+- GC9A01 round TFT IRIS display (via ESP32-S3, 3.3V)
 - Pioneer head unit (existing)
 - X9C104 digital pot (existing)
 - Offroad lights/lightbars via 12V relay (T1 toggle, MCU-independent)
@@ -206,7 +211,12 @@ Note: USB-C PD trigger boards required for lighting modules. Cannot wire LED str
 - `exterior-node.ino`: ESP32-S3 sketch — serial listener, glitter animation across all exterior zones
 
 ### display-code/IrisDisplay/
-- `IrisDisplay.ino`: IRIS display sketch — prototype on Uno R4, target MCU is ESP32-S3 with PSRAM
+- `IrisDisplay.ino`: IRIS display sketch — GC9A01 round TFT on ESP32-S3, TFT_eSPI library
+- `User_Setup.h`: TFT_eSPI pin config for GC9A01 (update GPIOs on hardware receipt)
+- `iris-display-spec.md`: Full phase roadmap and visual identity spec
+
+### arduino/character-lcd-spec.md
+- WH1602B-TMI-JT 16×2 LCD spec — pin assignments, state machine, content, wiring notes
 
 ### Integration Approach
 
