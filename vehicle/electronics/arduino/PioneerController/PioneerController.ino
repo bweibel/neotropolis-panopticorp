@@ -9,6 +9,7 @@
 #include "X9C.h"
 #include "pt.h"
 #include <LiquidCrystal.h>
+#include "Arduino_LED_Matrix.h"
 
 // =============================================================================
 // Pin constants

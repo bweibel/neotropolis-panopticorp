@@ -38,6 +38,9 @@ tmp/
 # Coverage
 coverage/
 
+# Arduino credentials
+arduino_secrets.h
+
 # Large media (tracked separately or via LFS)
 *.psd
 *.ai

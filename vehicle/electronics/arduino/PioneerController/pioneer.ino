@@ -350,6 +350,7 @@ void PulseTrackForward()
   Serial1.print(EVT_SKIP_FWD);
   Serial.println("PULSE-FF");
   showTrackMessage(true);
+  triggerTrackAnimation(true);
 }
 
 void PulseTrackBack()
@@ -359,6 +360,7 @@ void PulseTrackBack()
   Serial1.print(EVT_SKIP_BACK);
   Serial.println("PULSE-PV");
   showTrackMessage(false);
+  triggerTrackAnimation(false);
 }
 
 void PulseMute()
@@ -367,6 +369,7 @@ void PulseMute()
   IncreaseQueueIndex();
   Serial1.print(EVT_MUTE);
   Serial.println("PULSE-MUTE");
+  showMuteMessage();
 }
 
 void PulseTripleClick()
@@ -392,7 +395,7 @@ int getEncoderTurn()
   }
   oldA = newA;
   oldB = newB;
-  return result * -1;
+  return result;
 }
 
 // =============================================================================
@@ -454,6 +457,8 @@ void setup()
   Serial.println("Started");
 
   lcdInit();
+  ledMatrixInit();
+  otaInit();
 }
 
 void loop()
@@ -462,4 +467,6 @@ void loop()
   protothread2(&pt2);
   protothread3(&pt3);
   updateLcd();
+  updateLedMatrix();
+  otaUpdate();
 }

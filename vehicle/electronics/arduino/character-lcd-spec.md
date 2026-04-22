@@ -36,6 +36,27 @@ Add a WH1602B-TMI-JT 16×2 character LCD to the Arduino Uno R4 WiFi (PioneerCont
 
 Previously free pins consumed by LCD: 10, A0–A4. A5 and BTN_4 (pin 8) remain free.
 
+### Physical pin reference (WH1602B, pin 1 = left end when reading display from front)
+
+| Pin # | Signal | Connected to |
+|---|---|---|
+| 1 | VSS | GND |
+| 2 | VCC | 5V |
+| 3 | V0 (contrast) | Pot wiper |
+| 4 | RS | Arduino 10 |
+| 5 | R/W | GND (tied — write-only) |
+| 6 | E (Enable) | Arduino A0 |
+| 7 | DB0 | — (unconnected, 4-bit mode) |
+| 8 | DB1 | — |
+| 9 | DB2 | — |
+| 10 | DB3 | — |
+| 11 | DB4 | Arduino A1 |
+| 12 | DB5 | Arduino A2 |
+| 13 | DB6 | Arduino A3 |
+| 14 | DB7 | Arduino A4 |
+| 15 | A (backlight +) | 5V |
+| 16 | K (backlight −) | GND |
+
 ---
 
 ## Constants to add to PioneerController.ino

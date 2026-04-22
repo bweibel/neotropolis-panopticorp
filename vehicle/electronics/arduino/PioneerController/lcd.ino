@@ -6,16 +6,14 @@
 LiquidCrystal lcd(PIN_LCD_RS, PIN_LCD_EN, PIN_LCD_D4, PIN_LCD_D5, PIN_LCD_D6, PIN_LCD_D7);
 
 // Custom characters — loaded into CGRAM slots 0–6 (8 slots total, slot 7 free)
-byte CC_RARROW_DEF[8]   = { 0x10, 0x18, 0x1C, 0x1E, 0x1C, 0x18, 0x10, 0x00 };  // ▶ filled right arrow
-byte CC_LARROW_DEF[8]   = { 0x01, 0x03, 0x07, 0x0F, 0x07, 0x03, 0x01, 0x00 };  // ◀ filled left arrow
 byte CC_EYE_DEF[8]      = { 0x00, 0x0E, 0x11, 0x15, 0x11, 0x0E, 0x00, 0x00 };  // ⊙ oval outline with pupil
 byte CC_SMILEY_DEF[8]   = { 0x00, 0x00, 0x0A, 0x00, 0x11, 0x0E, 0x00, 0x00 };  // :) smiley face
 byte CC_ANTENNA_DEF[8]  = { 0x04, 0x0A, 0x11, 0x04, 0x04, 0x04, 0x0E, 0x00 };  // ʎ antenna — spread + mast + base
 byte CC_ARROWUP_DEF[8]  = { 0x04, 0x0E, 0x1F, 0x04, 0x04, 0x04, 0x00, 0x00 };  // ↑ filled up arrow with stem
 byte CC_ARROWDN_DEF[8]  = { 0x00, 0x04, 0x04, 0x04, 0x1F, 0x0E, 0x04, 0x00 };  // ↓ filled down arrow with stem
 
-#define CC_RARROW   0
-#define CC_LARROW   1
+#define CC_RARROW   0x7E  // → built-in ROM right arrow
+#define CC_LARROW   0x7F  // ← built-in ROM left arrow
 #define CC_EYE      2
 #define CC_SMILEY   3
 #define CC_ANTENNA  4
@@ -32,6 +30,13 @@ uint8_t       currentLcdScene = 0;  // mirrors hub scene state (0/1/2)
 
 const unsigned long LCD_EVENT_MS = 2000;
 const unsigned long LCD_IDLE_MS  = 8000;
+const unsigned long LCD_BUMP_MS  = 120;
+
+enum LcdAction { ACT_NONE, ACT_VOL_UP, ACT_VOL_DOWN, ACT_MUTE, ACT_TRACK_FWD, ACT_TRACK_BACK };
+LcdAction     lcdLastAction    = ACT_NONE;
+bool          lcdBumped        = false;
+unsigned long lcdBumpMs        = 0;
+uint8_t       lcdVolArrowCount = 0;
 
 // Boot sequence — each frame has its own duration, row 0 text, and row 1 text.
 // r1 == nullptr means draw the dynamic progress bar for that step.
@@ -58,18 +63,31 @@ const BootFrame BOOT_FRAMES[] = {
   {  600, "SECURITY CHECK  ",    nullptr    },  // 14  bar full
   // --- error ---
   {  1200,"AUTHORIZING USER",   "[--------------]"  },  // 15
-  {  200,"AUTHORIZING USER",    "[\xFF------------]"  },  // 15
-  {  200,"AUTHORIZING USER",    "[\xFF\xFF------------]"  },  // 15
+  {  200,"AUTHORIZING USER",    "[\xDF------------]"  },  // 15
+  {  200,"AUTHORIZING USER",    "[\xDF\xDF------------]"  },  // 15
+  {  200,"AUTHORIZING USER",    "[\xDF\xDF\xDF-----------]"  },
+  {  100,"AUTHORIZING USER",    "[\xDF\xDF\xDF\xDF----------]"  },
+  {  200,"AUTHORIZING USER",    "[\xDF\xDF\xDF\xDF\xDF---------]"  },
+  {  300,"AUTHORIZING USER",    "[\xDF\xDF\xDF\xDF\xDF\xDF--------]"  },
+  {  100,"AUTHORIZING USER",    "[\xDF\xDF\xDF\xDF\xDF\xDF--------]"  },
+  {  500,"AUTHORIZING USER",    "[\xDF\xDF\xDF\xDF\xDF\xDF\xDF-------]"  },
+  {  100,"AUTHORIZING USER",    "[\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF------]"  },
+  {  200,"AUTHORIZING USER",    "[\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF-----]"  },
+  {  300,"AUTHORIZING USER",    "[\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF----]"  },
+  {  200,"AUTHORIZING USER",    "[\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF---]"  },
+  {  400,"AUTHORIZING USER",    "[\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF--]"  },
+  {  300,"AUTHORIZING USER",    "[\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF-]"  },
+  {  200,"AUTHORIZING USER",    "[\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF\xDF]"  },
   {  900, "ACCESS DENIED   ",    FULL_BAR   },  // 15
-  {  120, "#CC3SS D3N13D % ",    "[\xFF\xFF$\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF]" },  // 16  glitch
+  {  120, "\xBCCC3SS D3N13D\xBF\xC6 ",  "[\xFF\xFF\xBB\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF]" },  // 16  glitch  ｼ ｿﾆ ｻ
   {  300, "ACCESS DENIED   ",    FULL_BAR   },  // 17
-  {  120, "4CC3$$ @#N!3D ! ",    "[\xFF\xFF\xFF\xFF\xFF%\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF]"},  // 18  glitch
-  {  120, "ACC!$S ##N!3D   ",    "[#\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF]"},  // 19  glitch
+  {  120, "4CC3\xBB\xBB \xC0\xBCN!3D\xC6! ",  "[\xFF\xFF\xFF\xFF\xFF\xBF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF]"},  // 18  glitch  ｻｻ ﾀｼ ﾆ ｿ
+  {  120, "ACC\xC3\xBBS \xBB\xC0N!3D   ",      "[\xBC\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF]"},  // 19  glitch  ﾃｻ ｻﾀ ｼ
   // --- override ---
   {  900, "OVERRIDE ACTIVE ",    FULL_BAR   },  // 20
-  {  120, "0V3RR!D3 ACT!V3 ",   "[\xFF\xFF\xFF\xFF$\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF]"},  // 21  glitch
+  {  120, "0V3RR\xC6D3 ACT\xBFV3 ",   "[\xFF\xFF\xFF\xFF\xC1\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF]"},  // 21  glitch  ﾆ ｿ ﾁ
   {  300, "OVERRIDE ACTIVE ",    FULL_BAR   },  // 22
-  {  120, "0V3RR!D3 4CT!V3 ",   "[\xFF\xFF\xFF\xFF\xFF\xFF\xFF#\xFF\xFF\xFF\xFF\xFF\xFF]"},  // 23  glitch
+  {  120, "0V3RR\xD7D3 4CT\xC6V3 ",   "[\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xBC\xFF\xFF\xFF\xFF\xFF\xFF]"},  // 23  glitch  ﾗ ﾆ ｼ
   // --- granted ---
   { 1200, "ACCESS GRANTED  ",    FULL_BAR   },  // 24
   { 1800, "ACCESS GRANTED  ",    FULL_BAR   },  // 25  linger
@@ -92,8 +110,6 @@ const char* IDLE_ROW1[] = {
 
 void lcdInit() {
   lcd.begin(16, 2);
-  lcd.createChar(CC_RARROW,  CC_RARROW_DEF);
-  lcd.createChar(CC_LARROW,  CC_LARROW_DEF);
   lcd.createChar(CC_EYE,     CC_EYE_DEF);
   lcd.createChar(CC_SMILEY,  CC_SMILEY_DEF);
   lcd.createChar(CC_ANTENNA, CC_ANTENNA_DEF);
@@ -111,6 +127,20 @@ void lcdInit() {
 
 void updateLcd() {
   unsigned long now = millis();
+
+  if (lcdBumped && now - lcdBumpMs >= LCD_BUMP_MS) {
+    lcdBumped  = false;
+    lcdStateMs = now;
+    switch (lcdLastAction) {
+      case ACT_VOL_UP:     drawVolumeMessage(true);  break;
+      case ACT_VOL_DOWN:   drawVolumeMessage(false); break;
+      case ACT_MUTE:       drawMuteMessage();        break;
+      case ACT_TRACK_FWD:  drawTrackMessage(true);   break;
+      case ACT_TRACK_BACK: drawTrackMessage(false);  break;
+      default: break;
+    }
+    return;
+  }
 
   if (lcdState == LCD_BOOT && now - lcdStateMs >= BOOT_FRAMES[bootStep].ms) {
     bootStep++;
@@ -167,7 +197,7 @@ void showBootStep(uint8_t step) {
     lcd.print("PANOPTICORP  ");
     lcd.write((uint8_t)CC_EYE);
     lcd.setCursor(0, 1);
-    lcd.print("                ");
+    lcd.print("  \xCA\xDF\xC9\xCC\xDF\xC3\xA8\xBA\xB0\xCC\xDF   ");  // パノプティコープ (centered)
     return;
   }
   // Row 0
@@ -203,20 +233,93 @@ void showSceneMessage(uint8_t scene) {
   lcdStateMs = millis();
 }
 
-void showTrackMessage(bool forward) {
+// =============================================================================
+// Draw helpers — render only, no state change
+// =============================================================================
+
+void drawTrackMessage(bool forward) {
   lcdPrintRow0(forward ? " SKIP FORWARD " : " SKIP BACK    ");
   lcdPrintBookend(1, forward ? " TRACK +1     " : " TRACK -1     ");
-  lcdState   = LCD_TRACK;
-  lcdStateMs = millis();
+}
+void drawMuteMessage() {
+  lcdPrintRow0("     MUTE     ");
+  lcd.setCursor(0, 1);
+  lcd.write((uint8_t)CC_RARROW);
+  lcd.print(" TOGGLING MUTE");
+  lcd.write((uint8_t)CC_LARROW);
+}
+
+void drawVolumeRow0(bool up) {
+  lcd.setCursor(0, 0);
+  lcd.write((uint8_t)(up ? CC_ARROWUP : CC_ARROWDN));
+  lcd.print(up ? "\xE8 VOLUME UP  \xE8" : "\xE8 VOLUME DOWN\xE8");
+  lcd.write((uint8_t)(up ? CC_ARROWUP : CC_ARROWDN));
+}
+
+void drawVolumeRow1(bool up) {
+  lcd.setCursor(0, 1);
+  uint8_t cc = '"';
+  for (uint8_t i = 0; i < 16; i++)
+    lcd.write(i < lcdVolArrowCount ? cc : (uint8_t)'|');
+}
+
+void drawVolumeMessage(bool up) {
+  drawVolumeRow0(up);
+  drawVolumeRow1(up);
+}
+
+void drawBumpRow1(uint8_t cc) {
+  lcd.setCursor(0, 1);
+  for (uint8_t i = 0; i < 16; i++) lcd.write(cc);
+}
+
+// =============================================================================
+// Public show functions — bump-aware
+// =============================================================================
+
+void showTrackMessage(bool forward) {
+  LcdAction act = forward ? ACT_TRACK_FWD : ACT_TRACK_BACK;
+  if (lcdState == LCD_TRACK && lcdLastAction == act && !lcdBumped) {
+    drawBumpRow1(forward ? CC_RARROW : CC_LARROW);
+    lcdBumped = true; lcdBumpMs = millis();
+    return;
+  }
+  lcdLastAction = act;
+  lcdBumped = false;
+  drawTrackMessage(forward);
+  lcdState = LCD_TRACK; lcdStateMs = millis();
+}
+
+void showMuteMessage() {
+  if (lcdState == LCD_VOLUME && lcdLastAction == ACT_MUTE && !lcdBumped) {
+    drawBumpRow1(' ');
+    lcdBumped = true; lcdBumpMs = millis();
+    return;
+  }
+  lcdLastAction = ACT_MUTE;
+  lcdBumped = false;
+  drawMuteMessage();
+  lcdState = LCD_VOLUME; lcdStateMs = millis();
 }
 
 void showVolumeMessage(bool up) {
-  lcdPrintRow0("    VOLUME    ");
-  lcd.setCursor(0, 1);
-  lcd.write((uint8_t)CC_RARROW);
-  lcd.write((uint8_t)(up ? CC_ARROWUP : CC_ARROWDN));
-  lcd.print(up ? "   VOL UP    " : "  VOL DOWN   ");
-  lcd.write((uint8_t)CC_LARROW);
-  lcdState   = LCD_VOLUME;
-  lcdStateMs = millis();
+  LcdAction act = up ? ACT_VOL_UP : ACT_VOL_DOWN;
+
+  if (lcdState == LCD_VOLUME && lcdLastAction == act && !lcdBumped) {
+    if (lcdVolArrowCount < 16) {
+      lcdVolArrowCount++;
+      drawVolumeRow1(up);
+      lcdStateMs = millis();
+    } else {
+      drawBumpRow1('|');
+      lcdBumped = true; lcdBumpMs = millis();
+    }
+    return;
+  }
+
+  lcdLastAction    = act;
+  lcdVolArrowCount   = 1;
+  lcdBumped        = false;
+  drawVolumeMessage(up);
+  lcdState = LCD_VOLUME; lcdStateMs = millis();
 }

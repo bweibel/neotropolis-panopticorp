@@ -1,10 +1,11 @@
 // =============================================================================
-// interior-hub — QT PY RP2040 (Adafruit 4900)
+// interior-hub — Hosyond ESP32-S3 N16R8
 // Role: Listens to Uno R4 serial events, controls interior lighting zones,
-//       and forwards scene changes to exterior node via wired UART (Serial2).
+//       and forwards scene changes to exterior node and IRIS display via
+//       wired UART (Serial2, shared TX line).
 //
 // Power: Battery USB-C 18W
-// Core: arduino-pico (Earle Philhower)
+// Board target: esp32:esp32:esp32s3
 // See: vehicle/electronics/baja-lighting-spec.md
 // =============================================================================
 
@@ -15,19 +16,25 @@
 // Pin constants
 // =============================================================================
 
+// Serial1: RX from Uno R4 (one-way receive)
+const int PIN_SERIAL_RX    = 16;
+const int PIN_SERIAL_TX    = 17;  // unused; required by Serial1.begin()
+
+// Serial2: shared TX → exterior node RX + IRIS RX
+const int PIN_BROADCAST_TX = 18;
+
 // Dashboard WS2812B strips (2.7mm, 160 LEDs each)
-const int PIN_DASH_LEFT  = 6;   // SCK/D8
-const int PIN_DASH_RIGHT = 3;   // MO/D10
+const int PIN_DASH_LEFT    =  5;
+const int PIN_DASH_RIGHT   =  6;
 
-// Footwell static RGB strips — single on/off signal via MOSFET
-const int PIN_FOOTWELL   = 26;  // A3/D3
-
-// Serial RX from Uno R4 (one-way receive)
-const int PIN_SERIAL_RX  = 5;   // RX/D7
-const int PIN_SERIAL_TX  = 20;  // TX/D6 (unused)
-
-// Serial TX to exterior node
-const int PIN_EXT_TX     = 4;   // MI/D9
+// Footwell static RGB strips — N-channel MOSFET, active HIGH
+// TODO: confirm polarity before install (common cathode assumed; invert values if common anode)
+const int PIN_FOOTWELL_L_R =  1;
+const int PIN_FOOTWELL_L_G =  2;
+const int PIN_FOOTWELL_L_B =  4;
+const int PIN_FOOTWELL_R_R =  7;
+const int PIN_FOOTWELL_R_G =  8;
+const int PIN_FOOTWELL_R_B =  9;
 
 // =============================================================================
 // LED strip configuration
@@ -51,24 +58,32 @@ const unsigned long GLITTER_INTERVAL_MS = 30;  // ~33fps
 // Scene management
 // =============================================================================
 
-void sendSceneToExterior(uint8_t scene) {
-  Serial2.println(scene);  // sends "0\n", "1\n", or "2\n"
+void broadcastScene(uint8_t scene) {
+  Serial2.println(scene);  // "0\n", "1\n", or "2\n" → exterior node + IRIS
 }
 
 void applySceneToFootwells(uint8_t scene) {
-  digitalWrite(PIN_FOOTWELL, scene == SCENE_OFF ? LOW : HIGH);
+  uint8_t r = 0, g = 0, b = 0;
+  if (scene == SCENE_RED)   { r = 0xCC; }
+  if (scene == SCENE_GREEN) { g = 0xCC; }
+  analogWrite(PIN_FOOTWELL_L_R, r);
+  analogWrite(PIN_FOOTWELL_L_G, g);
+  analogWrite(PIN_FOOTWELL_L_B, b);
+  analogWrite(PIN_FOOTWELL_R_R, r);
+  analogWrite(PIN_FOOTWELL_R_G, g);
+  analogWrite(PIN_FOOTWELL_R_B, b);
 }
 
 void advanceScene() {
   currentScene = (currentScene + 1) % 3;
-  sendSceneToExterior(currentScene);
+  broadcastScene(currentScene);
   applySceneToFootwells(currentScene);
   Serial.print("Scene: "); Serial.println(currentScene);
 }
 
 void retreatScene() {
   currentScene = (currentScene + 2) % 3;  // -1 mod 3
-  sendSceneToExterior(currentScene);
+  broadcastScene(currentScene);
   applySceneToFootwells(currentScene);
   Serial.print("Scene: "); Serial.println(currentScene);
 }
@@ -148,21 +163,23 @@ void setup() {
   Serial.begin(115200);
 
   // Serial1: receive from Uno R4
-  Serial1.setRX(PIN_SERIAL_RX);
-  Serial1.setTX(PIN_SERIAL_TX);
-  Serial1.begin(9600);
+  Serial1.begin(9600, SERIAL_8N1, PIN_SERIAL_RX, PIN_SERIAL_TX);
 
-  // Serial2: send scene index to exterior node
-  Serial2.setTX(PIN_EXT_TX);
-  Serial2.begin(9600);
+  // Serial2: broadcast scene index to exterior node + IRIS display
+  Serial2.begin(9600, SERIAL_8N1, -1, PIN_BROADCAST_TX);
 
   // FastLED
   FastLED.addLeds<WS2812B, PIN_DASH_LEFT,  GRB>(dashLeft,  DASH_NUM_LEDS);
   FastLED.addLeds<WS2812B, PIN_DASH_RIGHT, GRB>(dashRight, DASH_NUM_LEDS);
   FastLED.clear(true);
 
-  // Footwell on/off
-  pinMode(PIN_FOOTWELL, OUTPUT);
+  // Footwells
+  pinMode(PIN_FOOTWELL_L_R, OUTPUT);
+  pinMode(PIN_FOOTWELL_L_G, OUTPUT);
+  pinMode(PIN_FOOTWELL_L_B, OUTPUT);
+  pinMode(PIN_FOOTWELL_R_R, OUTPUT);
+  pinMode(PIN_FOOTWELL_R_G, OUTPUT);
+  pinMode(PIN_FOOTWELL_R_B, OUTPUT);
   applySceneToFootwells(SCENE_OFF);
 }
 

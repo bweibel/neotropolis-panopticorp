@@ -12,12 +12,12 @@
 #define TFT_WIDTH  240
 #define TFT_HEIGHT 240
 
-// SPI pin assignments — TBD on hardware receipt
-#define TFT_MOSI  /* GPIO TBD */
-#define TFT_SCLK  /* GPIO TBD */
-#define TFT_CS    /* GPIO TBD */
-#define TFT_DC    /* GPIO TBD */
-#define TFT_RST   /* GPIO TBD */
+// SPI pin assignments — ESP32-S3 hardware SPI2 defaults
+#define TFT_MOSI  11
+#define TFT_SCLK  12
+#define TFT_CS    10
+#define TFT_DC    13
+#define TFT_RST   14
 
 // Use HSPI port on ESP32-S3 (prevents known crash on some configurations)
 #define USE_HSPI_PORT
