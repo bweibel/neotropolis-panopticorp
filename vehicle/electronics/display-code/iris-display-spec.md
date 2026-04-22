@@ -80,92 +80,60 @@ Serial1.begin(9600, SERIAL_8N1, PIN_IRIS_RX, -1);  // RX only
 
 | Phase | Scope | Notes |
 |---|---|---|
-| 1 | Static test pattern — confirms wiring and SPI | Current scope |
-| 2 | IRIS lens illustration — aperture blades, iris ring, glass arc | Static, drawn once |
-| 3 | Animated lens — eyelid, pupil position, aperture spread | Non-blocking, millis() |
-| 4 | Scene-driven color (cyan / red / green) via UART | Parses scene index |
-| 5 | Mood state transitions — squint, surprised, wide scan, glitch | Driven by scene + timing |
+| 1 | Static test pattern — confirms wiring and SPI | Done |
+| 2 | Static IRIS eye character — cream oval, almond slit, pupil dot, all mood draw functions stubbed | Current scope |
+| 3 | Animated mood states — interpolate eyelid planes, pupil size/offset; full glitch scanlines | Non-blocking, millis() |
+| 4 | Scene-driven color via UART — parses scene index from Interior Hub | Tints sclera per scene |
+| 5 | Mood state machine — mood transitions driven by scene + autonomous timing | Driven by scene + timing |
 
 ---
 
-## Phase 1: Test pattern (current scope)
+## Phase 2: IRIS eye character (current scope)
 
-Static image drawn once in `setup()`. Confirms wiring, SPI, and library before any animation work.
+See mockups: `assets/brand/iris/iris-mock.png`, `assets/brand/iris/iris-moods.png`
 
-```cpp
-#include <TFT_eSPI.h>
+The eye fills the circular 240×240 canvas. All expression is in the eye — no housing chrome, no status bar.
 
-// Display dimensions
-const int LCD_W = 240;
-const int LCD_H = 240;
-const int LCD_CX = LCD_W / 2;
-const int LCD_CY = LCD_H / 2;
+### Rendering layers (draw order)
 
-// IRIS palette
-const uint16_t COLOR_IRIS_CYAN  = 0x07FF;  // cyan
-const uint16_t COLOR_BLACK      = 0x0000;
-const uint16_t COLOR_WHITE      = 0xFFFF;
+1. **Black background** — `fillScreen(COLOR_BLACK)`
+2. **Cream oval sclera** — `fillEllipse(cx, cy, OVAL_RX, OVAL_RY, COLOR_CREAM)` — horizontal oval, warm off-white
+3. **Almond slit** — `fillLens()` scanline function, two-circle intersection → pointed ends; cut into sclera in black
+4. **Eyelid planes** — black `fillRect` from top and/or bottom of oval; clipping amount encodes mood
+5. **Pupil dot** — `fillCircle` in white (green in glitch state)
 
-TFT_eSPI tft = TFT_eSPI();
+### Eye geometry constants (tune on hardware)
 
-void setup() {
-  Serial.begin(115200);
-  tft.init();
-  tft.setRotation(0);
-  tft.fillScreen(COLOR_BLACK);
-  drawTestPattern();
-  Serial.println("IRIS display init complete");
-}
+| Symbol | Value | Description |
+|---|---|---|
+| `OVAL_RX` | 100 | Sclera semi-width (px) |
+| `OVAL_RY` | 78 | Sclera semi-height (px) |
+| `COLOR_CREAM` | `color565(238, 230, 196)` | Warm off-white — set post-init |
 
-void loop() {
-  // nothing — static display
-}
+### Mood states
 
-void drawTestPattern() {
-  // Lens fill — cyan circle nearly filling the round display
-  tft.fillCircle(LCD_CX, LCD_CY, 110, COLOR_IRIS_CYAN);
+All six moods are stubbed as draw functions in Phase 2. Phase 3 animates between them.
 
-  // Aperture ring — dark outline at edge
-  tft.drawCircle(LCD_CX, LCD_CY, 110, COLOR_BLACK);
-  tft.drawCircle(LCD_CX, LCD_CY, 109, COLOR_BLACK);
+| Mood | topLidY | botLidY | slitRx | slitRy | pR | pColor | Read |
+|---|---|---|---|---|---|---|---|
+| Neutral | −OVAL_RY | +OVAL_RY | 76 | 20 | 13 | white | Open, passive |
+| Squint | −6 | +6 | 76 | 20 | 10 | white | Nearly closed, calculating |
+| Surprised | −OVAL_RY | +OVAL_RY | 76 | 28 | 18 | white | Wider slit, larger dot |
+| Suspicious | −10 | +32 | 76 | 20 | 11 | white | Top eyelid heavy, offset pupil |
+| Wide scan | −OVAL_RY | +OVAL_RY | 88 | 24 | 15 | white | Wider slit, active sweep |
+| Glitch | −OVAL_RY | +OVAL_RY | 76 | 20 | 16 | **green** | Full scanlines deferred to Phase 3 |
 
-  // Pupil — black center
-  tft.fillCircle(LCD_CX, LCD_CY, 30, COLOR_BLACK);
+`topLidY` and `botLidY` are y offsets from `LCD_CY`. A top eyelid covers from `LCD_CY − OVAL_RY` down to `LCD_CY + topLidY`.
 
-  // Label
-  tft.setTextColor(COLOR_WHITE, COLOR_IRIS_CYAN);
-  tft.setTextSize(2);
-  tft.setCursor(LCD_CX - 20, LCD_CY + 50);
-  tft.print("IRIS");
-}
-```
+### Color modes (Phase 4)
 
----
+`scleraColor` is passed into `drawIris()` — change it per scene index:
 
-## Visual identity (for Phase 2+)
+- **Scene 0 (OFF):** `COLOR_CREAM` — default, corporate/friendly
+- **Scene 1 (RED):** tinted red sclera — surveillance/patrol
+- **Scene 2 (GREEN):** tinted green sclera — sweep mode
 
-The IRIS lens fills the circular canvas. All expression is carried by the lens — there is no face.
-
-Expression variables:
-1. **Eyelid position** — dark plane sliding in from top or bottom
-2. **Pupil size and position** — centered/shifted, large/small
-3. **Iris ring brightness** — normal vs. heightened
-4. **Aperture blade spread** — closed/standard vs. retracted/open
-
-Color modes (driven by scene index):
-- **Cyan** (scene 0 / OFF): default, corporate/friendly
-- **Red** (scene 1 / RED): surveillance/patrol mode
-- **Green** (scene 2 / GREEN): sweep mode
-
-Mood states (Phase 5):
-| Mood | Read |
-|---|---|
-| Neutral | Baseline, passive |
-| Squint | Calculating |
-| Surprised | Input detected, iris snaps open |
-| Suspicious | Asymmetric, watching |
-| Wide scan | Active surveillance sweep |
-| Bleed/glitch | The other thing looking out |
+Glitch state always overrides pupil to `COLOR_GLITCH_GREEN` regardless of scene.
 
 ---
 
@@ -182,7 +150,9 @@ Mood states (Phase 5):
 
 ## Open questions
 
-- [ ] Pin assignments — all TBD pending Hosyond ESP32-S3 hardware arrival
+- [x] Pin assignments — set in User_Setup.h (MOSI=11, SCLK=12, CS=10, DC=13, RST=14)
+- [x] Hardware arrived — Hosyond ESP32-S3 N16R8 in hand
 - [ ] Confirm GC9A01 module VCC tolerance (most modules accept 3.3V–5V input with onboard regulator, but logic must be 3.3V)
+- [ ] Tune OVAL_RX, OVAL_RY, SLIT_RX, SLIT_RY on hardware to match mockup proportions
+- [ ] Glitch scanline distortion implementation (Phase 3 workstream)
 - [ ] Glitch state timing and trigger logic (Phase 5 workstream)
-- [ ] Full ticker token vocabulary if ticker is ever added back (currently cut for round format)
