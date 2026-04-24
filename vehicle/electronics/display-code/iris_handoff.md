@@ -18,9 +18,11 @@ The character's unsettling quality comes from the gap between the two — not fr
 
 ## Hardware
 
-- **Display:** Waveshare 2inch LCD Module, ST7789V controller, 240×320 resolution, SPI interface
-- **Host MCU (prototype):** Arduino Uno R4 WiFi
-- **Target MCU (event + permanent):** ESP32-S3 with PSRAM (dedicated board, car 12V powered)
+- **Display:** 1.28" round TFT, GC9A01 controller, 240×240, SPI
+- **MCU:** Seeed Studio XIAO ESP32-S3 Sense (8MB PSRAM, camera connector)
+- **Power:** Car 12V permanent
+
+**Note:** Earlier designs referenced a Waveshare 240×320 rectangular display with housing chrome and a ticker zone. The build moved to a round GC9A01 — the circular canvas IS the eye. No housing chrome, no ticker, no status bar. All character expression is through the eye geometry.
 
 ---
 
@@ -78,8 +80,17 @@ From top to bottom:
 
 ## Open Items
 
-- Full ticker token vocabulary for all scene modes and the glitch state
-- Serial event schema connecting scene changes to mood transitions (separate workstream, Claude Code)
-- Head unit assets: splash screen and looping video with Panopticorp branding (separate workstream)
+- Phase 1 + 2 complete on ESP32-S3-N16R8 devkit — IRIS eye renders correctly
+- Phase 1 + 2 still to be confirmed on XIAO ESP32-S3 Sense (final hardware)
+- Geometry tuning — OVAL_RX, OVAL_RY, slitRx, slitRy against mockup on hardware
+- Confirm `setRotation()` value when mounted in housing
+- Scene → mood mapping decision (which scene triggers which mood state)
 - Glitch state timing and trigger logic (how often, how long, what triggers recovery)
-- Color sync protocol between vehicle lighting scenes and IRIS color mode
+- Color sync: scene index → sclera tint (spec has draft mapping; confirm palette)
+
+## Hardware Notes
+
+- Library: Arduino_GFX — TFT_eSPI crashes on ESP32-S3 (StoreProhibited in DMA init)
+- IPS flag required: `Arduino_GC9A01 gfx(&bus, rst, 0, true)` — without it colors are inverted
+- FQBN must include `PSRAM=opi` — omitting it causes crash on boot
+- GC9A01 modules are fragile — test before wiring into vehicle. These modules have no onboard regulator; VCC must be 3.3V.

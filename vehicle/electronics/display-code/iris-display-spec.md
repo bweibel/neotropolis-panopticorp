@@ -2,59 +2,73 @@
 
 ## Scope
 
-Drive a GC9A01 1.28" round TFT (240×240) on a dedicated Hosyond ESP32-S3 N16R8. Display the IRIS surveillance AI character — an animated eye lens filling the circular canvas. No housing chrome, no status bar, no ticker zone; the round format IS the eye.
+Drive a GC9A01 1.28" round TFT (240×240) on a dedicated Seeed XIAO ESP32-S3 Sense. Display the IRIS surveillance AI character — an animated eye lens filling the circular canvas. No housing chrome, no status bar, no ticker zone; the round format IS the eye.
 
 ---
 
 ## Hardware
 
-- **Display:** 1.28" round TFT, GC9A01 controller, 240×240, SPI
-- **MCU:** Hosyond ESP32-S3 N16R8 (16MB flash, 8MB PSRAM)
+- **Display:** 1.28" round TFT, GC9A01 controller, 240×240, SPI, 3.3V, IPS panel
+- **MCU:** Seeed Studio XIAO ESP32-S3 Sense (8MB flash, 8MB PSRAM, camera connector)
 - **Power:** Car 12V permanent (same rail as Uno R4)
-- **Library:** TFT_eSPI (Bodmer) — configured via `User_Setup.h` alongside the sketch
+- **Library:** GFX Library for Arduino (Arduino_GFX, moononournation) v1.5.6+
+- **Toolchain:** `arduino-cli`
+- **Board targets:**
+  - Dev/test: `esp32:esp32:esp32s3:PSRAM=opi,CDCOnBoot=cdc` (ESP32-S3-N16R8 devkit)
+  - Final: `esp32:esp32:XIAO_ESP32S3:PSRAM=opi` (XIAO ESP32-S3 Sense) — confirm PSRAM option name for XIAO target
 
-### Why TFT_eSPI
+### Library notes
 
-- Hardware SPI at 40–80MHz on ESP32-S3 — smooth animation
-- GC9A01 driver built in
-- Adafruit GFX-compatible drawing primitives
-- PSRAM available for framebuffers as animation complexity grows
+TFT_eSPI (Bodmer) crashes on this hardware with a StoreProhibited panic inside `tft.init()` — a known DMA/PSRAM compatibility issue on ESP32-S3. Arduino_GFX works correctly.
 
-### Pin assignment (ESP32-S3 — TBD on hardware arrival)
+The GC9A01 modules used are IPS panels — `ips=true` must be passed to the `Arduino_GC9A01` constructor or colors are inverted.
 
-All pins defined as named constants. Avoid strapping pins (0, 45, 46) and flash pins (26–32 on some variants — confirm datasheet).
+`PSRAM=opi` is required in the FQBN. Without it, TFT_eSPI and Arduino_GFX both crash on boot with a null-pointer dereference in DMA setup.
 
-| Signal | GPIO | Notes |
-|---|---|---|
-| MOSI (SDA) | TBD | Hardware SPI MOSI |
-| SCK (CLK) | TBD | Hardware SPI clock |
-| CS | TBD | Chip select |
-| DC | TBD | Data/command |
-| RST | TBD | Reset |
-| VCC | 3.3V | GC9A01 is 3.3V logic |
-| GND | GND | |
+### Pin assignment — ESP32-S3-N16R8 devkit (test hardware)
+
+GPIOs 26–37 reserved (flash + OPI PSRAM). All assignments below are outside that range.
+
+| Signal     | GPIO | Notes              |
+|------------|------|--------------------|
+| MOSI (SDA) | 11   | Hardware SPI2 MOSI |
+| SCK (SCL)  | 12   | Hardware SPI2 clock |
+| CS         | 10   |                    |
+| DC         | 9    |                    |
+| RST        | 8    |                    |
+| VCC        | 3.3V | 3.3V logic, no onboard regulator on these modules |
+| GND        | GND  |                    |
+
+### Pin assignment — XIAO ESP32-S3 Sense (final hardware)
+
+The XIAO Sense camera connector occupies GPIOs in the 10–18 range. TFT pins must avoid this range.
+
+| Signal     | GPIO | XIAO label | Notes                   |
+|------------|------|------------|-------------------------|
+| MOSI (SDA) | 9    | D10        | Hardware SPI2 MOSI      |
+| SCK (SCL)  | 7    | D8         | Hardware SPI2 clock     |
+| CS         | 2    | D1         |                         |
+| DC         | 3    | D2         |                         |
+| RST        | 4    | D3         |                         |
+| VCC        | 3.3V | 3V3        |                         |
+| GND        | GND  | GND        |                         |
+
+Serial RX pin: GPIO 44 (D7) on XIAO, GPIO 17 on devkit.
 
 ---
 
-## TFT_eSPI configuration
+## Arduino_GFX initialisation
 
-`User_Setup.h` lives in the same sketch folder. Point TFT_eSPI to it by defining `USER_SETUP_LOADED` or placing the file at the library root — see TFT_eSPI docs for local setup method.
+Pin assignments and IPS flag live in the sketch, not a config file.
 
 ```cpp
-#define USER_SETUP_LOADED
-#define GC9A01_DRIVER
-#define TFT_WIDTH  240
-#define TFT_HEIGHT 240
+// Devkit
+Arduino_ESP32SPI bus(9, 10, 12, 11, GFX_NOT_DEFINED);  // DC, CS, SCK, MOSI, MISO
+Arduino_GC9A01   gfx(&bus, 8, 0, true);                 // RST, rotation, IPS=true
 
-// Update with actual GPIO numbers once hardware is in hand:
-#define TFT_MOSI  /* GPIO TBD */
-#define TFT_SCLK  /* GPIO TBD */
-#define TFT_CS    /* GPIO TBD */
-#define TFT_DC    /* GPIO TBD */
-#define TFT_RST   /* GPIO TBD */
-
-#define SPI_FREQUENCY     40000000
-#define SPI_READ_FREQUENCY  20000000
+// XIAO — swap these in when moving to final hardware
+// Arduino_ESP32SPI bus(3, 2, 7, 9, GFX_NOT_DEFINED);
+// Arduino_GC9A01   gfx(&bus, 4, 0, true);
 ```
 
 ---
@@ -68,9 +82,7 @@ Receives scene index from Interior Hub via wired UART (shared Serial2 broadcast 
 - Same format as exterior node — both wired to the same TX pin on the hub
 
 ```cpp
-const int PIN_IRIS_RX = /* TBD */;  // UART RX from hub Serial2 TX
-
-// In setup():
+// GPIO 17 on devkit, GPIO 44 on XIAO
 Serial1.begin(9600, SERIAL_8N1, PIN_IRIS_RX, -1);  // RX only
 ```
 
@@ -78,17 +90,34 @@ Serial1.begin(9600, SERIAL_8N1, PIN_IRIS_RX, -1);  // RX only
 
 ## Phase roadmap
 
-| Phase | Scope | Notes |
+| Phase | Scope | Status |
 |---|---|---|
-| 1 | Static test pattern — confirms wiring and SPI | Done |
-| 2 | Static IRIS eye character — cream oval, almond slit, pupil dot, all mood draw functions stubbed | Current scope |
-| 3 | Animated mood states — interpolate eyelid planes, pupil size/offset; full glitch scanlines | Non-blocking, millis() |
-| 4 | Scene-driven color via UART — parses scene index from Interior Hub | Tints sclera per scene |
-| 5 | Mood state machine — mood transitions driven by scene + autonomous timing | Driven by scene + timing |
+| 1 | Wiring test — confirms GC9A01 initialises and renders | **Complete** (devkit) |
+| 2 | Static IRIS eye — cream oval, almond slit, pupil dot, all mood draw functions stubbed | **Complete** (devkit) |
+| 3 | Animated mood states — interpolate eyelid planes, pupil size/offset; full glitch scanlines | Not started |
+| 4 | Scene-driven color via UART — parses scene index from Interior Hub | Not started |
+| 5 | Mood state machine — mood transitions driven by scene + autonomous timing | Not started |
 
 ---
 
-## Phase 2: IRIS eye character (current scope)
+## Compile and flash
+
+```sh
+# Dev board
+arduino-cli compile --fqbn esp32:esp32:esp32s3:PSRAM=opi,CDCOnBoot=cdc IrisDisplay/
+arduino-cli upload -p /dev/ttyACM0 --fqbn esp32:esp32:esp32s3:PSRAM=opi,CDCOnBoot=cdc IrisDisplay/
+
+# XIAO (swap pin comments in sketch first)
+arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3:PSRAM=opi IrisDisplay/
+arduino-cli upload -p /dev/ttyACM0 --fqbn esp32:esp32:XIAO_ESP32S3:PSRAM=opi IrisDisplay/
+
+# Serial monitor
+arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200
+```
+
+---
+
+## Phase 2: IRIS eye character
 
 See mockups: `assets/brand/iris/iris-mock.png`, `assets/brand/iris/iris-moods.png`
 
@@ -102,13 +131,25 @@ The eye fills the circular 240×240 canvas. All expression is in the eye — no 
 4. **Eyelid planes** — black `fillRect` from top and/or bottom of oval; clipping amount encodes mood
 5. **Pupil dot** — `fillCircle` in white (green in glitch state)
 
-### Eye geometry constants (tune on hardware)
+### Pixel grid
+
+All geometry is rendered on a logical pixel grid. `PIXEL=4` maps each logical pixel to a 4×4 block on the 240×240 display (60×60 logical grid).
+
+| Constant | Value | Description |
+|---|---|---|
+| `PIXEL` | 4 | Physical pixels per logical pixel |
+| `PCX/PCY` | 30 | Logical center (120/PIXEL) |
+
+### Eye geometry constants
 
 | Symbol | Value | Description |
 |---|---|---|
-| `OVAL_RX` | 100 | Sclera semi-width (px) |
-| `OVAL_RY` | 78 | Sclera semi-height (px) |
-| `COLOR_CREAM` | `color565(238, 230, 196)` | Warm off-white — set post-init |
+| `OVAL_RX` | 26 | Sclera semi-width (logical px) |
+| `OVAL_RY` | 17 | Sclera semi-height (logical px) |
+| `COLOR_CREAM` | `color565(238, 230, 196)` | Warm off-white sclera — set post-init |
+| `COLOR_PUPIL` | `COLOR_CREAM` | Pupil dot — matches sclera |
+
+Note: `pFillEllipse` and `pFillCircle` skip rows where `hw==0` to avoid lone tip pixels. One stray pixel remains at left/right of the slit at the widest row — acceptable at this resolution.
 
 ### Mood states
 
@@ -116,7 +157,7 @@ All six moods are stubbed as draw functions in Phase 2. Phase 3 animates between
 
 | Mood | topLidY | botLidY | slitRx | slitRy | pR | pColor | Read |
 |---|---|---|---|---|---|---|---|
-| Neutral | −OVAL_RY | +OVAL_RY | 76 | 20 | 13 | white | Open, passive |
+| Neutral | −OVAL_RY | +OVAL_RY | 16 | 7 | 3 | cream | Open, passive |
 | Squint | −6 | +6 | 76 | 20 | 10 | white | Nearly closed, calculating |
 | Surprised | −OVAL_RY | +OVAL_RY | 76 | 28 | 18 | white | Wider slit, larger dot |
 | Suspicious | −10 | +32 | 76 | 20 | 11 | white | Top eyelid heavy, offset pupil |
@@ -137,22 +178,12 @@ Glitch state always overrides pupil to `COLOR_GLITCH_GREEN` regardless of scene.
 
 ---
 
-## Verification
+## Open items
 
-- Display initializes without hanging `setup()`
-- Black background with cyan circle visible, "IRIS" label present
-- Aperture ring outline at circle edge
-- `Serial` prints "IRIS display init complete"
-- If screen blank/white: check VCC (must be 3.3V), confirm CS/DC/RST wiring
-- If garbled: try `tft.setRotation(1)`, check MOSI/SCK aren't swapped
-
----
-
-## Open questions
-
-- [x] Pin assignments — set in User_Setup.h (MOSI=11, SCLK=12, CS=10, DC=13, RST=14)
-- [x] Hardware arrived — Hosyond ESP32-S3 N16R8 in hand
-- [ ] Confirm GC9A01 module VCC tolerance (most modules accept 3.3V–5V input with onboard regulator, but logic must be 3.3V)
-- [ ] Tune OVAL_RX, OVAL_RY, SLIT_RX, SLIT_RY on hardware to match mockup proportions
-- [ ] Glitch scanline distortion implementation (Phase 3 workstream)
-- [ ] Glitch state timing and trigger logic (Phase 5 workstream)
+- [ ] Tune OVAL_RX, OVAL_RY, slitRx, slitRy on hardware against mockup (Phase 2 polish)
+- [ ] Confirm `setRotation` value when physically mounted in housing
+- [ ] Confirm PSRAM FQBN option name for XIAO ESP32-S3 target
+- [ ] Confirm camera pin conflicts on XIAO — if OV2640 in use, verify CS/DC/RST (GPIOs 2/3/4)
+- [ ] Scene → mood mapping decision (Phase 5)
+- [ ] Glitch trigger frequency and duration (Phase 5)
+- [ ] Glitch scanline distortion implementation (Phase 3)
