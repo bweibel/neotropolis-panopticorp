@@ -370,7 +370,6 @@ void PulseMute()
 {
   QueueCommands[QueueIndex] = MUTE;
   IncreaseQueueIndex();
-  isMuted = !isMuted;
   Serial1.print(EVT_MUTE);
   Serial.println("PULSE-MUTE");
   showMuteMessage();
@@ -462,7 +461,6 @@ void setup()
 
   lcdInit();
   ledMatrixInit();
-  knobLedInit();
   otaInit();
 }
 
@@ -473,6 +471,5 @@ void loop()
   protothread3(&pt3);
   updateLcd();
   updateLedMatrix();
-  updateKnobLed();
   otaUpdate();
 }

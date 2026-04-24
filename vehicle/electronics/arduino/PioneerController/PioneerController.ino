@@ -10,7 +10,6 @@
 #include "pt.h"
 #include <LiquidCrystal.h>
 #include "Arduino_LED_Matrix.h"
-#include <Adafruit_NeoPixel.h>
 
 // =============================================================================
 // Pin constants
@@ -40,8 +39,6 @@ const int PIN_POT_CS  = 13;
 const int PIN_POT_UD  = 12;
 const int PIN_POT_INC = 11;
 
-const int PIN_KNOB_LED = A5;  // WS2811 above volume knob
-
 // =============================================================================
 // Event string constants
 // =============================================================================
@@ -59,4 +56,3 @@ const char* EVT_SCENE_PREV = "SCENE_PREV\n";
 // =============================================================================
 
 bool ledMasterOn = false;
-bool isMuted     = false;
