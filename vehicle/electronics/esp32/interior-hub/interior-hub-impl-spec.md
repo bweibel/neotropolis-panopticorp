@@ -236,9 +236,9 @@ Logic, animation, and footwell functions are unchanged.
 
 ## Open questions
 
-- [ ] **Pin assignments** — all QT Py RP2040 pin numbers must be remapped to Hosyond ESP32-S3 GPIOs once hardware is in hand. Avoid strapping pins (0, 45, 46) and flash pins (26–32 on some variants — confirm datasheet).
-- [ ] **UART assignment** — confirmed: Serial=debug, Serial1=Uno RX, Serial2=broadcast TX (shared to exterior node + IRIS). No third UART needed.
-- [ ] **Footwell strip polarity** — common anode or common cathode?
+- [x] **Pin assignments** — set in `interior-hub.ino`: Serial1 RX=16/TX=17, Serial2 TX=18, Dash L=5, Dash R=6, Footwell L R/G/B=1/2/4, Footwell R R/G/B=7/8/9. Confirm against physical Hosyond board before wiring.
+- [x] **UART assignment** — Serial=debug, Serial1=Uno RX, Serial2=broadcast TX (shared to exterior node + IRIS). No third UART needed.
+- [ ] **Footwell strip polarity** — common anode or common cathode? N-channel MOSFETs assumed active HIGH (common cathode). Invert `analogWrite` values in `applySceneToFootwells()` if strips are common anode.
 
 ---
 

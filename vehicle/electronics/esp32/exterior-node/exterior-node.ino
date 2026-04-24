@@ -26,7 +26,7 @@ const int PIN_ACCENT_1 = 4;
 const int PIN_ACCENT_2 = 2;
 
 // Serial from interior hub (RP2040)
-const int PIN_HUB_RX = 16;  // wired to RP2040 PIN_EXT_TX
+const int PIN_HUB_RX = 16;  // wired to Interior Hub Serial2 TX (shared with IRIS RX)
 const int PIN_HUB_TX = 17;  // unused
 
 // Wheel well static RGB strips (MOSFET PWM — stub, active HIGH)

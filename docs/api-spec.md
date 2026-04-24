@@ -1,5 +1,7 @@
 # API Specification
 
+> **Shelved (April 2026)** — website and backend deprioritized for May 2026 event. Retained for future reference.
+
 ## Overview
 Backend API for game state management and player progression.
 

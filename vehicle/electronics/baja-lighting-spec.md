@@ -20,7 +20,7 @@ Three independent software systems sharing one-way serial links.
 - ESP32-S3 N16R8 Exterior Node: receives scene index via wired UART from hub, controls exterior strips and Pixelblaze
 
 **Permanent display module** (car 12V):
-- ESP32-S3 N16R8 — IRIS display character
+- XIAO ESP32-S3 Sense — IRIS display character
 - Receives scene index via wired UART from interior hub (shared Serial2 TX)
 - Drives 1.28" round GC9A01 TFT (240×240) via hardware SPI — animated eye lens
 - Handles all display animation independently
@@ -36,7 +36,7 @@ Three independent software systems sharing one-way serial links.
 | Arduino Uno R4 WiFi | Head unit controller, input surface | Car 12V |
 | ESP32-S3 N16R8 (Hosyond) | Interior lighting hub | Battery 18W USB-C |
 | ESP32-S3 N16R8 (Hosyond) | Exterior lighting node | Battery 100W USB-C |
-| ESP32-S3 N16R8 (Hosyond) | IRIS display character | Car 12V (permanent) |
+| XIAO ESP32-S3 Sense (Seeed) | IRIS display character | Car 12V (permanent) |
 | WH1602B-TMI-JT 16×2 LCD | Status + flavor text display | Uno R4 (permanent, 5V) |
 | Pixelblaze V3 Standard | Top scanner + rear window strips | Battery (via exterior node power rail) |
 
@@ -189,9 +189,9 @@ Pixelblaze is configured independently via its web UI. It does not receive seria
 
 ### Car 12V — IRIS display module (permanent)
 
-- ESP32-S3 with PSRAM (IRIS display character)
-- Waveshare 2" ST7789V LCD
-- Powered from car 12V via 3.3V regulator (display and ESP32 are 3.3V logic)
+- XIAO ESP32-S3 Sense (IRIS display character)
+- 1.28" round GC9A01 TFT (240×240)
+- Powered from car 12V via 3.3V regulator (display and XIAO are 3.3V logic)
 
 Note: USB-C PD trigger boards required for lighting modules. Cannot wire LED strips directly to USB-C. Purchase boards rated for target amperage before wiring.
 
@@ -205,7 +205,7 @@ Note: USB-C PD trigger boards required for lighting modules. Cannot wire LED str
 - `pt.h`, `lc.h`, `lc-switch.h`, `lc-addrlabels.h`, `pt-sem.h`: Protothreads (Contiki OS, Adam Dunkels)
 
 ### esp32/interior-hub/
-- `interior-hub.ino`: RP2040 sketch — serial listener, glitter animation, scene management, exterior UART TX
+- `interior-hub.ino`: ESP32-S3 sketch — serial listener, glitter animation, scene management, exterior UART TX (port from RP2040 complete)
 
 ### esp32/exterior-node/
 - `exterior-node.ino`: ESP32-S3 sketch — serial listener, glitter animation across all exterior zones
