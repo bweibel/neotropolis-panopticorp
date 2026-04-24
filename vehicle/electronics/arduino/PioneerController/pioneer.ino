@@ -67,6 +67,9 @@ static int            CurLimit      = 0;
 // =============================================================================
 
 // X9C104 is 100K / 100 steps = 1K per step, set directly as percentage
+// WARNING: These values were empirically tuned but the target Pioneer model
+// is not documented. Possible code/hardware mismatch — verify against the
+// actual installed unit before relying on this integration.
 #define REST_VOLUMEUP    15
 #define REST_VOLUMEDOWN  23
 #define REST_TRACKFF     7
@@ -367,6 +370,7 @@ void PulseMute()
 {
   QueueCommands[QueueIndex] = MUTE;
   IncreaseQueueIndex();
+  isMuted = !isMuted;
   Serial1.print(EVT_MUTE);
   Serial.println("PULSE-MUTE");
   showMuteMessage();
@@ -458,6 +462,7 @@ void setup()
 
   lcdInit();
   ledMatrixInit();
+  knobLedInit();
   otaInit();
 }
 
@@ -468,5 +473,6 @@ void loop()
   protothread3(&pt3);
   updateLcd();
   updateLedMatrix();
+  updateKnobLed();
   otaUpdate();
 }
