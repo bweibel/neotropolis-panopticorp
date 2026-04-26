@@ -335,6 +335,7 @@ void PulseVolumeUp()
   Serial1.print(EVT_VOL_UP);
   Serial.println("PULSE-UP");
   showVolumeMessage(true);
+  triggerKnobLedVolume();
 }
 
 void PulseVolumeDown()
@@ -344,6 +345,7 @@ void PulseVolumeDown()
   Serial1.print(EVT_VOL_DOWN);
   Serial.println("PULSE-DOWN");
   showVolumeMessage(false);
+  triggerKnobLedVolume();
 }
 
 void PulseTrackForward()
@@ -354,6 +356,7 @@ void PulseTrackForward()
   Serial.println("PULSE-FF");
   showTrackMessage(true);
   triggerTrackAnimation(true);
+  triggerKnobLedTrack();
 }
 
 void PulseTrackBack()
@@ -364,6 +367,7 @@ void PulseTrackBack()
   Serial.println("PULSE-PV");
   showTrackMessage(false);
   triggerTrackAnimation(false);
+  triggerKnobLedTrack();
 }
 
 void PulseMute()
@@ -461,6 +465,7 @@ void setup()
 
   lcdInit();
   ledMatrixInit();
+  knobLedInit();
   otaInit();
 }
 
@@ -471,5 +476,6 @@ void loop()
   protothread3(&pt3);
   updateLcd();
   updateLedMatrix();
+  updateKnobLed();
   otaUpdate();
 }
