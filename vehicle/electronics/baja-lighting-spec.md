@@ -17,7 +17,8 @@ Three independent software systems sharing one-way serial links.
 
 **Removable lighting module** (battery powered):
 - ESP32-S3 N16R8 Interior Hub: listens to Uno serial, controls interior strips, sends scene index to exterior node and IRIS display via wired UART
-- ESP32-S3 N16R8 Exterior Node: receives scene index via wired UART from hub, controls exterior strips and Pixelblaze
+- ESP32-S3 N16R8 Exterior Node: receives scene index via wired UART from hub, controls side strips, hood scoop, and accent elements
+- XIAO ESP32-S3 Sense Sensor Bar: taps hub Serial2 TX for scene index; drives top scanner (150 LEDs) with mic-driven audio reactivity in scene color palette
 
 **Permanent display module** (car 12V):
 - XIAO ESP32-S3 Sense — IRIS display character
@@ -36,7 +37,8 @@ Three independent software systems sharing one-way serial links.
 | Arduino Uno R4 WiFi | Head unit controller, input surface | Car 12V |
 | ESP32-S3 N16R8 (Hosyond) | Interior lighting hub | Battery 18W USB-C |
 | ESP32-S3 N16R8 (Hosyond) | Exterior lighting node | Battery 100W USB-C |
-| XIAO ESP32-S3 Sense (Seeed) | IRIS display character | Car 12V (permanent) |
+| XIAO ESP32-S3 Sense (Seeed) | Sensor bar (top scanner) — audio reactive | Battery 100W USB-C |
+| ESP32-S3 N16R8 (Hosyond) | IRIS display character | Car 12V (permanent) |
 | WH1602B-TMI-JT 16×2 LCD | Status + flavor text display | Uno R4 (permanent, 5V) |
 | Pixelblaze V3 Standard | Top scanner + rear window strips | Battery (via exterior node power rail) |
 
@@ -52,6 +54,10 @@ Three independent software systems sharing one-way serial links.
 | T2 | LED master power (cuts 12V to lighting module) | Uno reads state on boot |
 
 Toggle T2 is read by the Uno on boot and on change. When OFF, Uno suppresses SCENE_* events. All other events (VOL, SKIP, MUTE) are always emitted.
+
+### Pioneer Head Unit Integration
+
+> ⚠️ **NEEDS REVIEW** — Resistance values in `PioneerController` (`REST_VOLUMEUP`, `REST_VOLUMEDOWN`, etc.) were empirically tuned but the target Pioneer model is not documented. Possible code/hardware mismatch. Verify resistance map against the actual installed unit before relying on this integration. Deprioritised — revisit if time permits before event.
 
 ### Center Console Panel (3D printed mount, Uno R4 visible)
 
@@ -122,13 +128,14 @@ This produces a subtle shimmer without strobing. Adjust percentages during testi
 
 ---
 
-## Interior→Exterior Link
+## Hub Broadcast Link (Serial2 TX — shared)
 
-- Transport: Wired UART, one-way TX from RP2040 hub to ESP32 exterior node
+- Transport: Wired UART, one-way TX from Interior Hub Serial2
 - Baud: 9600
-- Format: ASCII integer, newline terminated ("0\n", "1\n", "2\n")
+- Format: ASCII integer, newline terminated (`"0\n"`, `"1\n"`, `"2\n"`)
 - Content: Scene index only
 - No handshake, no acknowledgment
+- **Three receivers on one TX line:** Exterior Node N16R8, Sensor Bar XIAO, IRIS Display N16R8
 
 ---
 
@@ -138,24 +145,29 @@ This produces a subtle shimmer without strobing. Adjust percentages during testi
 
 | Zone | Type | LEDs | Control method | Notes |
 |---|---|---|---|---|
-| Dashboard outline x2 | WS2812B 2.7mm | 160 each | FastLED, two data pins | Potential permanent install |
-| Floor footwells x2-4 | Static 4-line RGB | unknown | MOSFET PWM (3 pins per zone) | N-ch MOSFETs e.g. IRLZ44N |
+| Dashboard outline | WS2812B 2.7mm | 160 | FastLED, single data pin | |
+| Back window matrix | SK6812 8x8 (Electromage) | 64 | FastLED, single data pin | Glitter animation; RGBW, W unused |
 
-### Exterior Node (ESP32 #2)
+### Exterior Node (ESP32-S3 N16R8)
 
 | Zone | Type | LEDs | Control method | Notes |
 |---|---|---|---|---|
-| Side strips x2 | WS2812B | 150 each | FastLED, two data pins | Set and forget, basic animation |
-| Hood scoop | WS2812B | <10 | FastLED, join nearest data line | Static acceptable |
-| Accent elements | WS2812B | ~8 each | FastLED, join nearest data line | Basic animation |
+| Side strips x2 | WS2812B | 150 each | FastLED, two data pins | Glitter animation |
+| Hood scoop | WS2812B | <10 | FastLED | Glitter animation |
+| Accent elements x2 | WS2812B | ~8 each | FastLED | Glitter animation |
 | Wheel wells x4 | Static 4-line RGB | unknown | MOSFET PWM (stretch goal) | Can run standalone if cut |
+
+### Sensor Bar (XIAO ESP32-S3 Sense)
+
+| Zone | Type | LEDs | Control method | Notes |
+|---|---|---|---|---|
+| Top scanner | WS2812B | 150 | FastLED + PDM mic | Audio reactive, scene color palette |
 
 ### Pixelblaze V3 Standard (independent)
 
 | Zone | LEDs | Notes |
 |---|---|---|
-| Top scanner | 150 | Primary reactive zone, audio reactive stretch goal |
-| Rear window | 150 | Optional, cut candidate under time pressure |
+| Rear window | 150 | Cut candidate — Pixelblaze now has no primary zone; deprioritise if time is short |
 
 Pixelblaze is configured independently via its web UI. It does not receive serial or ESP-NOW commands for MVP. Scene sync to Pixelblaze is a future enhancement.
 
@@ -189,9 +201,9 @@ Pixelblaze is configured independently via its web UI. It does not receive seria
 
 ### Car 12V — IRIS display module (permanent)
 
-- XIAO ESP32-S3 Sense (IRIS display character)
+- Hosyond ESP32-S3 N16R8 (IRIS display character)
 - 1.28" round GC9A01 TFT (240×240)
-- Powered from car 12V via 3.3V regulator (display and XIAO are 3.3V logic)
+- Powered from car 12V via 3.3V regulator (display and ESP32 are 3.3V logic)
 
 Note: USB-C PD trigger boards required for lighting modules. Cannot wire LED strips directly to USB-C. Purchase boards rated for target amperage before wiring.
 
@@ -208,7 +220,10 @@ Note: USB-C PD trigger boards required for lighting modules. Cannot wire LED str
 - `interior-hub.ino`: ESP32-S3 sketch — serial listener, glitter animation, scene management, exterior UART TX (port from RP2040 complete)
 
 ### esp32/exterior-node/
-- `exterior-node.ino`: ESP32-S3 sketch — serial listener, glitter animation across all exterior zones
+- `exterior-node.ino`: ESP32-S3 N16R8 sketch — serial listener, glitter animation across side/hood/accent zones
+
+### esp32/sensor-bar/
+- Firmware not yet written — XIAO ESP32-S3 Sense, PDM mic + FastLED, scene-aware audio reactivity. See `README.md`.
 
 ### display-code/IrisDisplay/
 - `IrisDisplay.ino`: IRIS display sketch — GC9A01 round TFT on ESP32-S3, TFT_eSPI library

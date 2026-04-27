@@ -23,27 +23,21 @@ const int PIN_SERIAL_TX    = 17;  // unused; required by Serial1.begin()
 // Serial2: shared TX → exterior node RX + IRIS RX
 const int PIN_BROADCAST_TX = 18;
 
-// Dashboard WS2812B strips (2.7mm, 160 LEDs each)
-const int PIN_DASH_LEFT    =  5;
-const int PIN_DASH_RIGHT   =  6;
+// Dashboard WS2812B strip (2.7mm, 160 LEDs)
+const int PIN_DASH         =  5;
 
-// Footwell static RGB strips — N-channel MOSFET, active HIGH
-// TODO: confirm polarity before install (common cathode assumed; invert values if common anode)
-const int PIN_FOOTWELL_L_R =  1;
-const int PIN_FOOTWELL_L_G =  2;
-const int PIN_FOOTWELL_L_B =  4;
-const int PIN_FOOTWELL_R_R =  7;
-const int PIN_FOOTWELL_R_G =  8;
-const int PIN_FOOTWELL_R_B =  9;
+// Back window SK6812 8x8 LED matrix
+const int PIN_MATRIX       =  6;
 
 // =============================================================================
 // LED strip configuration
 // =============================================================================
 
-const int DASH_NUM_LEDS = 160;
+const int DASH_NUM_LEDS   = 160;
+const int MATRIX_NUM_LEDS =  64;  // 8x8
 
-CRGB dashLeft[DASH_NUM_LEDS];
-CRGB dashRight[DASH_NUM_LEDS];
+CRGB dash[DASH_NUM_LEDS];
+CRGB matrix[MATRIX_NUM_LEDS];
 
 // =============================================================================
 // State
@@ -62,29 +56,15 @@ void broadcastScene(uint8_t scene) {
   Serial2.println(scene);  // "0\n", "1\n", or "2\n" → exterior node + IRIS
 }
 
-void applySceneToFootwells(uint8_t scene) {
-  uint8_t r = 0, g = 0, b = 0;
-  if (scene == SCENE_RED)   { r = 0xCC; }
-  if (scene == SCENE_GREEN) { g = 0xCC; }
-  analogWrite(PIN_FOOTWELL_L_R, r);
-  analogWrite(PIN_FOOTWELL_L_G, g);
-  analogWrite(PIN_FOOTWELL_L_B, b);
-  analogWrite(PIN_FOOTWELL_R_R, r);
-  analogWrite(PIN_FOOTWELL_R_G, g);
-  analogWrite(PIN_FOOTWELL_R_B, b);
-}
-
 void advanceScene() {
   currentScene = (currentScene + 1) % 3;
   broadcastScene(currentScene);
-  applySceneToFootwells(currentScene);
   Serial.print("Scene: "); Serial.println(currentScene);
 }
 
 void retreatScene() {
   currentScene = (currentScene + 2) % 3;  // -1 mod 3
   broadcastScene(currentScene);
-  applySceneToFootwells(currentScene);
   Serial.print("Scene: "); Serial.println(currentScene);
 }
 
@@ -149,8 +129,8 @@ void updateLighting() {
   if (now - lastGlitterMs >= GLITTER_INTERVAL_MS) {
     lastGlitterMs = now;
     CRGB color = (currentScene == SCENE_RED) ? COLOR_RED : COLOR_GREEN;
-    runGlitter(dashLeft,  DASH_NUM_LEDS, color);
-    runGlitter(dashRight, DASH_NUM_LEDS, color);
+    runGlitter(dash,   DASH_NUM_LEDS,   color);
+    runGlitter(matrix, MATRIX_NUM_LEDS, color);
     FastLED.show();
   }
 }
@@ -169,18 +149,9 @@ void setup() {
   Serial2.begin(9600, SERIAL_8N1, -1, PIN_BROADCAST_TX);
 
   // FastLED
-  FastLED.addLeds<WS2812B, PIN_DASH_LEFT,  GRB>(dashLeft,  DASH_NUM_LEDS);
-  FastLED.addLeds<WS2812B, PIN_DASH_RIGHT, GRB>(dashRight, DASH_NUM_LEDS);
+  FastLED.addLeds<WS2812B, PIN_DASH,   GRB>(dash,   DASH_NUM_LEDS);
+  FastLED.addLeds<SK6812,  PIN_MATRIX, GRB>(matrix, MATRIX_NUM_LEDS);
   FastLED.clear(true);
-
-  // Footwells
-  pinMode(PIN_FOOTWELL_L_R, OUTPUT);
-  pinMode(PIN_FOOTWELL_L_G, OUTPUT);
-  pinMode(PIN_FOOTWELL_L_B, OUTPUT);
-  pinMode(PIN_FOOTWELL_R_R, OUTPUT);
-  pinMode(PIN_FOOTWELL_R_G, OUTPUT);
-  pinMode(PIN_FOOTWELL_R_B, OUTPUT);
-  applySceneToFootwells(SCENE_OFF);
 }
 
 void loop() {

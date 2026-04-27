@@ -9,13 +9,11 @@ Drive a GC9A01 1.28" round TFT (240×240) on a dedicated Seeed XIAO ESP32-S3 Sen
 ## Hardware
 
 - **Display:** 1.28" round TFT, GC9A01 controller, 240×240, SPI, 3.3V, IPS panel
-- **MCU:** Seeed Studio XIAO ESP32-S3 Sense (8MB flash, 8MB PSRAM, camera connector)
+- **MCU:** Hosyond ESP32-S3 N16R8 (16MB flash, 8MB OPI PSRAM)
 - **Power:** Car 12V permanent (same rail as Uno R4)
 - **Library:** GFX Library for Arduino (Arduino_GFX, moononournation) v1.5.6+
 - **Toolchain:** `arduino-cli`
-- **Board targets:**
-  - Dev/test: `esp32:esp32:esp32s3:PSRAM=opi,CDCOnBoot=cdc` (ESP32-S3-N16R8 devkit)
-  - Final: `esp32:esp32:XIAO_ESP32S3:PSRAM=opi` (XIAO ESP32-S3 Sense) — confirm PSRAM option name for XIAO target
+- **Board target:** `esp32:esp32:esp32s3:PSRAM=opi,CDCOnBoot=cdc`
 
 ### Library notes
 
@@ -25,50 +23,30 @@ The GC9A01 modules used are IPS panels — `ips=true` must be passed to the `Ard
 
 `PSRAM=opi` is required in the FQBN. Without it, TFT_eSPI and Arduino_GFX both crash on boot with a null-pointer dereference in DMA setup.
 
-### Pin assignment — ESP32-S3-N16R8 devkit (test hardware)
+### Pin assignment — Hosyond ESP32-S3 N16R8
 
 GPIOs 26–37 reserved (flash + OPI PSRAM). All assignments below are outside that range.
 
-| Signal     | GPIO | Notes              |
-|------------|------|--------------------|
-| MOSI (SDA) | 11   | Hardware SPI2 MOSI |
-| SCK (SCL)  | 12   | Hardware SPI2 clock |
-| CS         | 10   |                    |
-| DC         | 9    |                    |
-| RST        | 8    |                    |
-| VCC        | 3.3V | 3.3V logic, no onboard regulator on these modules |
-| GND        | GND  |                    |
+| Signal     | GPIO | Notes                                              |
+|------------|------|----------------------------------------------------|
+| MOSI (SDA) | 11   | Hardware SPI2 MOSI                                 |
+| SCK (SCL)  | 12   | Hardware SPI2 clock                                |
+| CS         | 10   |                                                    |
+| DC         | 9    |                                                    |
+| RST        | 8    |                                                    |
+| VCC        | 3.3V | 3.3V logic — no onboard regulator on these modules |
+| GND        | GND  |                                                    |
 
-### Pin assignment — XIAO ESP32-S3 Sense (final hardware)
-
-The XIAO Sense camera connector occupies GPIOs in the 10–18 range. TFT pins must avoid this range.
-
-| Signal     | GPIO | XIAO label | Notes                   |
-|------------|------|------------|-------------------------|
-| MOSI (SDA) | 9    | D10        | Hardware SPI2 MOSI      |
-| SCK (SCL)  | 7    | D8         | Hardware SPI2 clock     |
-| CS         | 2    | D1         |                         |
-| DC         | 3    | D2         |                         |
-| RST        | 4    | D3         |                         |
-| VCC        | 3.3V | 3V3        |                         |
-| GND        | GND  | GND        |                         |
-
-Serial RX pin: GPIO 44 (D7) on XIAO, GPIO 17 on devkit.
+Serial RX (from Interior Hub): GPIO 17.
 
 ---
 
 ## Arduino_GFX initialisation
 
-Pin assignments and IPS flag live in the sketch, not a config file.
-
 ```cpp
-// Devkit
 Arduino_ESP32SPI bus(9, 10, 12, 11, GFX_NOT_DEFINED);  // DC, CS, SCK, MOSI, MISO
-Arduino_GC9A01   gfx(&bus, 8, 0, true);                 // RST, rotation, IPS=true
-
-// XIAO — swap these in when moving to final hardware
-// Arduino_ESP32SPI bus(3, 2, 7, 9, GFX_NOT_DEFINED);
-// Arduino_GC9A01   gfx(&bus, 4, 0, true);
+Arduino_GC9A01   display(&bus, 8, 0, true);              // RST, rotation, IPS=true
+Arduino_Canvas   canvas(240, 240, &display);
 ```
 
 ---
@@ -103,15 +81,8 @@ Serial1.begin(9600, SERIAL_8N1, PIN_IRIS_RX, -1);  // RX only
 ## Compile and flash
 
 ```sh
-# Dev board
 arduino-cli compile --fqbn esp32:esp32:esp32s3:PSRAM=opi,CDCOnBoot=cdc IrisDisplay/
 arduino-cli upload -p /dev/ttyACM0 --fqbn esp32:esp32:esp32s3:PSRAM=opi,CDCOnBoot=cdc IrisDisplay/
-
-# XIAO (swap pin comments in sketch first)
-arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3:PSRAM=opi IrisDisplay/
-arduino-cli upload -p /dev/ttyACM0 --fqbn esp32:esp32:XIAO_ESP32S3:PSRAM=opi IrisDisplay/
-
-# Serial monitor
 arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200
 ```
 
@@ -182,7 +153,7 @@ Glitch state always overrides pupil to `COLOR_GLITCH_GREEN` regardless of scene.
 
 - [ ] Tune OVAL_RX, OVAL_RY, slitRx, slitRy on hardware against mockup (Phase 2 polish)
 - [ ] Confirm `setRotation` value when physically mounted in housing
-- [ ] Confirm PSRAM FQBN option name for XIAO ESP32-S3 target
+- [ ] Confirm `setRotation()` value when physically mounted in housing
 - [ ] Confirm camera pin conflicts on XIAO — if OV2640 in use, verify CS/DC/RST (GPIOs 2/3/4)
 - [ ] Scene → mood mapping decision (Phase 5)
 - [ ] Glitch trigger frequency and duration (Phase 5)

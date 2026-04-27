@@ -1,9 +1,11 @@
 // =============================================================================
-// exterior-node — ESP32-S3 #2 (with camera)
-// Role: Receives scene changes from interior hub via wired UART and controls
-//       exterior lighting zones.
+// exterior-node — Hosyond ESP32-S3 N16R8
+// Role: Receives scene index from interior hub via wired UART; controls side
+//       strips, hood scoop, and accent elements with glitter animation.
+//       Top scanner (sensor bar) is handled by a separate XIAO ESP32-S3 Sense.
 //
 // Power: Battery USB-C 100W
+// Board target: esp32:esp32:esp32s3:PSRAM=opi,CDCOnBoot=cdc
 // See: vehicle/electronics/baja-lighting-spec.md
 // =============================================================================
 
@@ -11,49 +13,49 @@
 #include "scenes.h"
 
 // =============================================================================
-// Pin constants — exterior lighting zones
+// Pin constants
+// GPIOs 26–37 reserved on N16R8 (flash + OPI PSRAM) — avoid.
 // =============================================================================
 
 // Side strips (WS2812B, 150 LEDs each)
 const int PIN_SIDE_LEFT  = 13;
 const int PIN_SIDE_RIGHT = 14;
 
-// Hood scoop (WS2812B, ~8 LEDs)
+// Hood scoop (WS2812B, ~8 LEDs — adjust HOOD_NUM_LEDS to actual count)
 const int PIN_HOOD_SCOOP = 15;
 
-// Accent elements (WS2812B, ~8 LEDs each)
+// Accent elements (WS2812B, ~8 LEDs each — adjust ACCENT_NUM_LEDS to actual count)
 const int PIN_ACCENT_1 = 4;
 const int PIN_ACCENT_2 = 2;
 
-// Serial from interior hub (RP2040)
-const int PIN_HUB_RX = 16;  // wired to Interior Hub Serial2 TX (shared with IRIS RX)
-const int PIN_HUB_TX = 17;  // unused
+// Serial from Interior Hub (shared Serial2 TX line — also wired to IRIS and sensor bar)
+const int PIN_HUB_RX = 16;
+const int PIN_HUB_TX = 17;  // unused; required by Serial2.begin()
 
-// Wheel well static RGB strips (MOSFET PWM — stub, active HIGH)
-// Front left
-const int PIN_WHEEL_FL_R = 25;
-const int PIN_WHEEL_FL_G = 26;
-const int PIN_WHEEL_FL_B = 27;
-// Front right
-const int PIN_WHEEL_FR_R = 32;
-const int PIN_WHEEL_FR_G = 33;
-const int PIN_WHEEL_FR_B = 0;   // reassigned from 34 (input-only on ESP32); confirm pin is free before wiring wheel wells
-// Rear left
-const int PIN_WHEEL_RL_R = 18;
-const int PIN_WHEEL_RL_G = 19;
-const int PIN_WHEEL_RL_B = 21;
-// Rear right
-const int PIN_WHEEL_RR_R = 22;
-const int PIN_WHEEL_RR_G = 23;
-const int PIN_WHEEL_RR_B = 5;
+// Wheel well static RGB strips (MOSFET PWM — stretch goal, active HIGH assumed)
+// WARNING: Several pins below fall in or near the OPI PSRAM range (26–37).
+// Reassign before wiring. Confirmed safe on N16R8: 18–25, 38–40, 42–48.
+const int PIN_WHEEL_FL_R = 18;
+const int PIN_WHEEL_FL_G = 19;
+const int PIN_WHEEL_FL_B = 21;
+const int PIN_WHEEL_FR_R = 22;
+const int PIN_WHEEL_FR_G = 23;
+const int PIN_WHEEL_FR_B = 25;
+const int PIN_WHEEL_RL_R = 38;
+const int PIN_WHEEL_RL_G = 39;
+const int PIN_WHEEL_RL_B = 40;
+const int PIN_WHEEL_RR_R = 42;
+const int PIN_WHEEL_RR_G = 43;
+const int PIN_WHEEL_RR_B = 44;
 
 // =============================================================================
 // LED strip configuration
 // =============================================================================
 
 const int SIDE_NUM_LEDS   = 150;
-const int HOOD_NUM_LEDS   = 8;    // adjust to actual count
-const int ACCENT_NUM_LEDS = 8;    // adjust to actual count
+const int HOOD_NUM_LEDS   = 8;   // adjust to actual count
+const int ACCENT_NUM_LEDS = 8;   // adjust to actual count
+// Top scanner (150 LEDs) handled by XIAO ESP32-S3 Sense sensor bar node
 
 CRGB sideLeft[SIDE_NUM_LEDS];
 CRGB sideRight[SIDE_NUM_LEDS];

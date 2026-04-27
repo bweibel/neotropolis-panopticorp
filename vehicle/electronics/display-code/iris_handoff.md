@@ -18,8 +18,8 @@ The character's unsettling quality comes from the gap between the two — not fr
 
 ## Hardware
 
-- **Display:** 1.28" round TFT, GC9A01 controller, 240×240, SPI
-- **MCU:** Seeed Studio XIAO ESP32-S3 Sense (8MB PSRAM, camera connector)
+- **Display:** 1.28" round TFT, GC9A01 controller, 240×240, SPI, IPS
+- **MCU:** Hosyond ESP32-S3 N16R8 (16MB flash, 8MB OPI PSRAM)
 - **Power:** Car 12V permanent
 
 **Note:** Earlier designs referenced a Waveshare 240×320 rectangular display with housing chrome and a ticker zone. The build moved to a round GC9A01 — the circular canvas IS the eye. No housing chrome, no ticker, no status bar. All character expression is through the eye geometry.

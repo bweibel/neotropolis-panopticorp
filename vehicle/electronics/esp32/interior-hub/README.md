@@ -7,9 +7,8 @@
 Port from QT Py RP2040 is done. Pin assignments are set in `interior-hub.ino` but have not been physically verified against the Hosyond board.
 
 Open before first power-on:
-- Confirm footwell strip polarity (common cathode assumed; invert `analogWrite` values if common anode)
 - Confirm pin assignments against physical Hosyond ESP32-S3 N16R8 board and wiring
-- Bench test: Serial1 receives `SCENE_NEXT` from Uno → dashboard strips glitter, footwells change color, Serial2 TX sends scene index
+- Bench test: Serial1 receives `SCENE_NEXT` from Uno → dashboard strips glitter, Serial2 TX sends scene index
 
 ## Target hardware
 - Hosyond ESP32-S3 N16R8 (16MB flash, 8MB PSRAM)
@@ -23,11 +22,8 @@ Open before first power-on:
 | PIN_SERIAL_RX | 16 | Serial1 RX ← Uno R4 TX |
 | PIN_SERIAL_TX | 17 | Serial1 TX (unused, required by begin()) |
 | PIN_BROADCAST_TX | 18 | Serial2 TX → exterior node + IRIS (shared line) |
-| PIN_DASH_LEFT | 5 | Dashboard WS2812B left |
-| PIN_DASH_RIGHT | 6 | Dashboard WS2812B right |
-| PIN_FOOTWELL_L_R/G/B | 1, 2, 4 | Left footwell MOSFET PWM |
-| PIN_FOOTWELL_R_R/G/B | 7, 8, 9 | Right footwell MOSFET PWM |
-
+| PIN_DASH | 5 | Dashboard WS2812B strip |
+| PIN_MATRIX | 6 | Back window SK6812 8x8 matrix |
 ## UART topology
 
 | UART | Direction | Role |

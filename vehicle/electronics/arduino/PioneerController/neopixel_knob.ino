@@ -80,7 +80,7 @@ void updateKnobLed() {
   // Post-boot: very dim orange
   if (lcdState != LCD_BOOT) {
     knobPhase = KNOB_IDLE;
-    knobSet(knobLed.Color(15, 3, 0));
+    knobSet(knobLed.Color(7, 1, 0));
     return;
   }
 
