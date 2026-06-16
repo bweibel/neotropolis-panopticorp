@@ -6,7 +6,6 @@ Evil surveillance corporation for cyberpunk event (May 2026).
 - Physical vehicle installation (Subaru Baja → RSU) ← **active scope**
 
 ### Shelved for future years
-- Corporate website (atmospheric, polished)
 - Multi-layer hacking game (minigames, narrative progression, easter eggs)
 
 ## Tech Stack
